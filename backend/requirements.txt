@@ -1,8 +1,11 @@
 fastapi
 uvicorn[standard]
 faster-whisper
-# 釘 4.4.0：4.5+ 的 Windows wheel 在部分環境會 segfault（記憶體存取違規）
-ctranslate2==4.4.0
+# 依平台分流：
+# - Windows 本機：釘 4.4.0（4.5+ 的 Windows wheel 在 Anaconda 環境會 segfault）
+# - Linux/HF Spaces：不釘，由 faster-whisper 拉最新版
+#   （4.4.0 的 Linux wheel 會觸發 "cannot enable executable stack" 載入失敗）
+ctranslate2==4.4.0 ; platform_system == "Windows"
 yt-dlp
 pydantic-settings
 python-multipart
