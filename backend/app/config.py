@@ -11,6 +11,8 @@ class Settings(BaseSettings):
     # VAD（修剪靜音）需要 onnxruntime；某些 Windows 環境其 DLL 載入失敗，
     # 故預設關閉。Docker/Linux 部署可改 true 以略過長靜音、加速。
     whisper_vad: bool = False
+    # 分段轉檔：每段秒數（長節目用，逐段回報進度與部分逐字稿）
+    chunk_seconds: int = 300
     download_dir: str = "./_data"
 
     # 防濫用

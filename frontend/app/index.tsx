@@ -93,6 +93,11 @@ export default function Home() {
           <Text style={styles.statusText}>{stageLabel}</Text>
         </View>
       )}
+      {busy && status?.transcript ? (
+        <Text style={styles.partial} numberOfLines={5}>
+          …{status.transcript.slice(-400)}
+        </Text>
+      ) : null}
       {msg && <Text style={styles.error}>{msg}</Text>}
 
       <Text style={styles.histTitle}>歷史筆記</Text>
@@ -140,6 +145,14 @@ const styles = StyleSheet.create({
   link: { color: "#2563eb", marginTop: 4 },
   status: { flexDirection: "row", alignItems: "center", gap: 8 },
   statusText: { color: "#444" },
+  partial: {
+    color: "#666",
+    fontSize: 13,
+    lineHeight: 19,
+    backgroundColor: "#f6f6f6",
+    padding: 10,
+    borderRadius: 8,
+  },
   error: { color: "#dc2626" },
   histTitle: { fontSize: 16, fontWeight: "600", marginTop: 8 },
   empty: { color: "#999" },

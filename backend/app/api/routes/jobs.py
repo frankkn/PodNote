@@ -51,7 +51,10 @@ def _run_job(job_id: str, url: str) -> None:
         def on_progress(p: float) -> None:
             store.update(job_id, progress=round(p, 3))
 
-        text = transcribe(path, on_progress=on_progress)
+        def on_partial(partial: str) -> None:
+            store.update(job_id, transcript=partial)
+
+        text = transcribe(path, on_progress=on_progress, on_partial=on_partial)
         store.update(
             job_id,
             state=JobState.done,
