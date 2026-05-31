@@ -13,6 +13,11 @@ class Settings(BaseSettings):
     whisper_vad: bool = False
     download_dir: str = "./_data"
 
+    # 防濫用
+    max_audio_seconds: int = 1800  # 節目長度上限（秒），預設 30 分
+    max_concurrent_jobs: int = 1  # 同時處理的任務數（免費 CPU 一次一個）
+    rate_limit_per_hour: int = 5  # 每個 IP 每小時可建立的任務數
+
     @property
     def origins_list(self) -> list[str]:
         return [o.strip() for o in self.allowed_origins.split(",") if o.strip()]

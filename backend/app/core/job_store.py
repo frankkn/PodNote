@@ -38,6 +38,15 @@ class JobStore:
         with self._lock:
             return self._jobs.get(job_id)
 
+    def active_count(self) -> int:
+        """進行中（pending 或 running）的任務數。"""
+        with self._lock:
+            return sum(
+                1
+                for j in self._jobs.values()
+                if j.state in (JobState.pending, JobState.running)
+            )
+
     def update(self, job_id: str, **fields) -> None:
         with self._lock:
             job = self._jobs.get(job_id)

@@ -36,11 +36,13 @@ export default function Home() {
   };
 
   const stageLabel =
-    status?.stage === "downloading"
-      ? "下載音訊中…"
-      : status?.stage === "transcribing"
-        ? `轉檔中 ${Math.round((status?.progress ?? 0) * 100)}%`
-        : "建立任務中…";
+    status?.stage === "probing"
+      ? "檢查節目資訊…"
+      : status?.stage === "downloading"
+        ? "下載音訊中…"
+        : status?.stage === "transcribing"
+          ? `轉檔中 ${Math.round((status?.progress ?? 0) * 100)}%`
+          : "建立任務中…";
 
   return (
     <View style={styles.container}>

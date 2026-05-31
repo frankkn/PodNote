@@ -20,7 +20,17 @@ export async function createJob(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ url }),
   });
-  if (!res.ok) throw new Error(`建立任務失敗 (${res.status})`);
+  if (!res.ok) {
+    // 後端會在 detail 帶友善訊息（例如速率限制、忙碌中）
+    let detail = `建立任務失敗 (${res.status})`;
+    try {
+      const j = await res.json();
+      if (j?.detail) detail = j.detail;
+    } catch {
+      // 忽略非 JSON 回應
+    }
+    throw new Error(detail);
+  }
   return res.json();
 }
 
