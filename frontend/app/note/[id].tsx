@@ -1,6 +1,13 @@
 import { useEffect, useState } from "react";
-import { ActivityIndicator, ScrollView, StyleSheet, Text } from "react-native";
+import {
+  ActivityIndicator,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import { useLocalSearchParams } from "expo-router";
+import Markdown from "react-native-markdown-display";
 
 import { summarize } from "@/api/gemini";
 import { GEMINI_KEY_STORAGE } from "@/config";
@@ -30,23 +37,72 @@ export default function Note() {
     })();
   }, [id]);
 
-  if (loading) return <ActivityIndicator style={styles.center} />;
+  if (loading) {
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator />
+        <Text style={styles.hint}>生成筆記中…</Text>
+      </View>
+    );
+  }
   if (err) return <Text style={styles.error}>{err}</Text>;
 
-  // MVP：先以純文字呈現 Markdown；之後可換 react-native-markdown-display 美化。
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.note} selectable>
-        {note}
-      </Text>
+      <Markdown style={mdStyles}>{note}</Markdown>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  center: { marginTop: 48 },
-  container: { flex: 1 },
-  content: { padding: 20 },
-  note: { fontSize: 15, lineHeight: 23, color: "#111" },
+  center: { flex: 1, alignItems: "center", justifyContent: "center", gap: 10 },
+  hint: { color: "#666" },
+  container: { flex: 1, backgroundColor: "#fff" },
+  content: { padding: 20, paddingBottom: 48 },
   error: { color: "#dc2626", margin: 20 },
+});
+
+// react-native-markdown-display 的樣式鍵
+const mdStyles = StyleSheet.create({
+  body: { fontSize: 15, lineHeight: 24, color: "#1f2937" },
+  heading1: {
+    fontSize: 24,
+    fontWeight: "700",
+    color: "#111827",
+    marginTop: 8,
+    marginBottom: 12,
+  },
+  heading2: {
+    fontSize: 19,
+    fontWeight: "700",
+    color: "#111827",
+    marginTop: 22,
+    marginBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: "#e5e7eb",
+    paddingBottom: 4,
+  },
+  heading3: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#374151",
+    marginTop: 14,
+    marginBottom: 6,
+  },
+  list_item: { marginVertical: 3 },
+  strong: { fontWeight: "700", color: "#111827" },
+  blockquote: {
+    backgroundColor: "#f3f4f6",
+    borderLeftWidth: 4,
+    borderLeftColor: "#9ca3af",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    marginVertical: 8,
+  },
+  code_inline: {
+    backgroundColor: "#f3f4f6",
+    paddingHorizontal: 4,
+    borderRadius: 4,
+    fontFamily: "monospace",
+  },
 });
