@@ -1,0 +1,9 @@
+fastapi
+uvicorn[standard]
+faster-whisper
+# 釘 4.4.0：4.5+ 的 Windows wheel 在部分環境會 segfault（記憶體存取違規）
+ctranslate2==4.4.0
+yt-dlp
+pydantic-settings
+python-multipart
+httpx

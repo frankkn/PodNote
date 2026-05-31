@@ -1,0 +1,23 @@
+{
+  "expo": {
+    "name": "PodNote",
+    "slug": "podnote",
+    "version": "1.0.0",
+    "scheme": "podnote",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "web": {
+      "bundler": "metro",
+      "output": "static"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-asset",
+      "expo-font"
+    ],
+    "android": {
+      "package": "com.example.podnote"
+    }
+  }
+}
