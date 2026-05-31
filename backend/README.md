@@ -1,3 +1,13 @@
+---
+title: PodNote API
+emoji: 🎙️
+colorFrom: blue
+colorTo: indigo
+sdk: docker
+app_port: 7860
+pinned: false
+---
+
 # PodNote 後端 (FastAPI)
 
 非同步任務式 API：建立轉檔任務 → 背景下載 + faster-whisper 轉檔 → 前端輪詢取逐字稿。
