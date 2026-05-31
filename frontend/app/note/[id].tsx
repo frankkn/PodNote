@@ -12,7 +12,8 @@ import Markdown from "react-native-markdown-display";
 import { summarize } from "@/api/gemini";
 import { GEMINI_KEY_STORAGE } from "@/config";
 import { getItem } from "@/lib/secureStore";
-import { loadTranscript } from "@/store/results";
+import { loadPending } from "@/store/results";
+import { getNote, saveNote } from "@/store/notes";
 
 export default function Note() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -23,11 +24,25 @@ export default function Note() {
   useEffect(() => {
     (async () => {
       try {
-        const transcript = loadTranscript(String(id));
-        if (!transcript) throw new Error("找不到逐字稿，請回首頁重新產生");
+        // 1) 已存過的筆記：直接讀本機，不重打 Gemini
+        const saved = await getNote(String(id));
+        if (saved) {
+          setNote(saved.markdown);
+          return;
+        }
+        // 2) 剛轉好、尚未生成：用逐字稿生成筆記並存檔
+        const pending = loadPending(String(id));
+        if (!pending) throw new Error("找不到逐字稿，請回首頁重新產生");
         const key = await getItem(GEMINI_KEY_STORAGE);
         if (!key) throw new Error("尚未設定 Gemini API Key，請先到設定頁");
-        const result = await summarize(transcript, key);
+        const result = await summarize(pending.transcript, key);
+        await saveNote({
+          id: String(id),
+          title: pending.title,
+          url: pending.url,
+          markdown: result,
+          createdAt: Date.now(),
+        });
         setNote(result);
       } catch (e) {
         setErr(e instanceof Error ? e.message : "發生未知錯誤");

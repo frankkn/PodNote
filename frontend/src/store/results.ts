@@ -1,11 +1,17 @@
-// 暫存逐字稿（記憶體內），讓筆記頁能依 job id 取用。
-// MVP 用 Map 即可；之後要保存歷史筆記再換 AsyncStorage / SQLite。
-const cache = new Map<string, string>();
-
-export function saveTranscript(jobId: string, transcript: string): void {
-  cache.set(jobId, transcript);
+// 暫存「剛轉好、尚未生成筆記」的逐字稿與來源資訊（記憶體內，依 job id 取用）。
+// 一旦在筆記頁生成筆記，就會持久化到 notes store（見 src/store/notes.ts）。
+export interface PendingTranscript {
+  transcript: string;
+  title: string;
+  url: string;
 }
 
-export function loadTranscript(jobId: string): string | undefined {
+const cache = new Map<string, PendingTranscript>();
+
+export function savePending(jobId: string, data: PendingTranscript): void {
+  cache.set(jobId, data);
+}
+
+export function loadPending(jobId: string): PendingTranscript | undefined {
   return cache.get(jobId);
 }
