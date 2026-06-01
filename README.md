@@ -158,3 +158,23 @@ uvicorn app.main:app --reload --port 8000
 1. 後端正在 `http://localhost:8000` 執行。
 2. `frontend/.env` 裡的 `EXPO_PUBLIC_BACKEND_URL` 是 `http://localhost:8000`。
 3. 如果你改了 `.env`，請重新啟動 Expo。
+
+---
+
+## 版本記錄
+
+### v1.0.0 — 2026-06-01
+
+首個正式版本。
+
+**功能**
+
+- 貼上 Podcast / YouTube 連結，自動下載音訊、轉錄成逐字稿，再用 Gemini 整理成結構化繁體中文筆記
+- 雙模式轉錄
+  - **快速（推薦）**：呼叫 Groq Whisper API（外部 GPU），通常數秒到數十秒完成；使用者自帶 Groq Key，過水不存
+  - **慢速（簡單）**：在伺服器 CPU 執行 faster-whisper，免申請任何 key
+- 底部 Tab Bar 導覽：**生成筆記 / 筆記歷史 / 設定**
+- 多集併發：可同時送出多集，每集各自顯示進度卡；完成後點「查看筆記」進入閱讀頁
+- 筆記閱讀頁：頂部 **[筆記 | 逐字稿]** 切換；筆記歷史列表每筆也有獨立的兩個快捷按鈕
+- 本機持久化筆記歷史（localStorage / AsyncStorage）
+- 部署於 Hugging Face Spaces（Docker），GitHub Actions tag 觸發自動部署
