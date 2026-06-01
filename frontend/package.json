@@ -30,6 +30,7 @@
   },
   "devDependencies": {
     "@types/react": "~18.3.12",
+    "playwright": "^1.60.0",
     "typescript": "~5.3.3"
   }
 }

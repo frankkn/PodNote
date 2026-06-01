@@ -1,31 +1,36 @@
-import { Platform, useWindowDimensions } from "react-native";
+import { Platform, Text, useWindowDimensions } from "react-native";
+import { useEffect, useState } from "react";
 import { Tabs } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
 
 const BREAKPOINT = 768;
 
+// 桌面用 root layout 的 sidebar 導覽，底部 tab bar 以 display:none 隱藏
+// （切「樣式」而非抽換 tabBar 元件，避免 navigator 結構變動造成崩潰）。
+// emoji 取代 @expo/vector-icons（其字型載入在 web 會觸發 CSSStyleDeclaration 錯誤）。
 export default function TabLayout() {
   const { width } = useWindowDimensions();
-  const isDesktop = Platform.OS === "web" && width >= BREAKPOINT;
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  const isDesktop = mounted && Platform.OS === "web" && width >= BREAKPOINT;
 
   return (
     <Tabs
-      // 桌面隱藏底部 Tab Bar，導覽由 root layout 的 Sidebar 負責
-      tabBar={isDesktop ? () => null : undefined}
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: "#2563eb",
         tabBarInactiveTintColor: "#9ca3af",
-        tabBarStyle: { borderTopColor: "#e5e7eb" },
         tabBarLabelStyle: { fontSize: 12, fontWeight: "600" },
+        tabBarStyle: isDesktop
+          ? { display: "none" }
+          : { borderTopColor: "#e5e7eb" },
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
           title: "生成筆記",
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="create-outline" color={color} size={size} />
+          tabBarIcon: ({ focused }) => (
+            <Text style={{ fontSize: 20, opacity: focused ? 1 : 0.5 }}>✏️</Text>
           ),
         }}
       />
@@ -33,8 +38,8 @@ export default function TabLayout() {
         name="history"
         options={{
           title: "筆記歷史",
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="time-outline" color={color} size={size} />
+          tabBarIcon: ({ focused }) => (
+            <Text style={{ fontSize: 20, opacity: focused ? 1 : 0.5 }}>📋</Text>
           ),
         }}
       />
@@ -42,8 +47,8 @@ export default function TabLayout() {
         name="settings"
         options={{
           title: "設定",
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="settings-outline" color={color} size={size} />
+          tabBarIcon: ({ focused }) => (
+            <Text style={{ fontSize: 20, opacity: focused ? 1 : 0.5 }}>⚙️</Text>
           ),
         }}
       />

@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
 import {
-  FlatList,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -29,13 +29,12 @@ export default function HistoryTab() {
     );
   }
 
+  // 用 ScrollView + map 取代 FlatList：FlatList(VirtualizedList) 在
+  // react-native-web 0.19 會觸發 CSSStyleDeclaration 崩潰。筆記量不大，不需虛擬化。
   return (
-    <FlatList
-      data={notes}
-      keyExtractor={(n) => n.id}
-      contentContainerStyle={styles.list}
-      renderItem={({ item }: { item: SavedNote }) => (
-        <View style={styles.row}>
+    <ScrollView contentContainerStyle={styles.list}>
+      {notes.map((item) => (
+        <View key={item.id} style={styles.row}>
           <View style={styles.rowInfo}>
             <Text style={styles.rowTitle} numberOfLines={2}>
               {item.title}
@@ -68,8 +67,8 @@ export default function HistoryTab() {
             </Pressable>
           </View>
         </View>
-      )}
-    />
+      ))}
+    </ScrollView>
   );
 }
 
