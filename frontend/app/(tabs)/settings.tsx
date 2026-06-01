@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Button, StyleSheet, Text, TextInput, View } from "react-native";
 
-import { GEMINI_KEY_STORAGE, GROQ_KEY_STORAGE } from "@/config";
+import { APP_VERSION, GEMINI_KEY_STORAGE, GROQ_KEY_STORAGE } from "@/config";
 import { getItem, setItem } from "@/lib/secureStore";
 
 export default function SettingsTab() {
@@ -54,6 +54,11 @@ export default function SettingsTab() {
 
       <Button title="儲存" onPress={onSave} />
       {saved && <Text style={styles.ok}>已儲存 ✓</Text>}
+
+      <View style={styles.versionRow}>
+        <Text style={styles.versionLabel}>目前版本</Text>
+        <Text style={styles.versionValue}>v{APP_VERSION}</Text>
+      </View>
     </View>
   );
 }
@@ -71,4 +76,14 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
   ok: { color: "#16a34a", marginTop: 8 },
+  versionRow: {
+    borderTopWidth: 1,
+    borderTopColor: "#e5e7eb",
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 16,
+    paddingTop: 16,
+  },
+  versionLabel: { color: "#666", fontSize: 14 },
+  versionValue: { color: "#111827", fontSize: 14, fontWeight: "600" },
 });
