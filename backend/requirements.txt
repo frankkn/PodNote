@@ -12,3 +12,5 @@ python-multipart
 httpx
 # 快速模式把音訊片段編碼成 wav 上傳外部 API 時用到（faster-whisper 已相依，明列以策安全）
 numpy
+# 簡體→繁體轉換（純 Python、跨平台、無原生相依）
+opencc-python-reimplemented

@@ -22,6 +22,14 @@ class Settings(BaseSettings):
     # GPU 分段秒數：16kHz 單聲道 wav，600 秒 ≈ 19MB，安全低於 25MB 單檔上限。
     stt_chunk_seconds: int = 600
 
+    # 中文逐字稿品質：
+    # - zh_prompt：引導 Whisper 輸出繁體並加標點（CPU 與 Groq 兩模式都會帶）
+    # - convert_to_traditional：用 OpenCC 把結果簡體→繁體（保證繁體）
+    zh_prompt: str = "以下是繁體中文的對話，請適當加上標點符號。"
+    convert_to_traditional: bool = True
+    # OpenCC 轉換設定：s2tw=台灣標準繁體；s2t=一般繁體；s2twp=台灣標準含詞彙轉換
+    opencc_config: str = "s2tw"
+
     download_dir: str = "./_data"
 
     # 防濫用

@@ -15,8 +15,25 @@ SAMPLE_RATE = 16000
 _model: Optional[WhisperModel] = None
 _model_lock = threading.Lock()
 
+_cc = None  # OpenCC 簡→繁轉換器（延遲載入）
+_cc_lock = threading.Lock()
+
 ProgressCb = Optional[Callable[[float], None]]
 PartialCb = Optional[Callable[[str], None]]
+
+
+def _to_traditional(text: str) -> str:
+    """簡體→繁體（OpenCC s2t）。Whisper 中文預設輸出簡體，這步保證繁體。"""
+    if not text or not settings.convert_to_traditional:
+        return text
+    global _cc
+    if _cc is None:
+        with _cc_lock:
+            if _cc is None:
+                from opencc import OpenCC
+
+                _cc = OpenCC(settings.opencc_config)
+    return _cc.convert(text)
 
 
 def transcribe(
@@ -72,7 +89,11 @@ def _transcribe_cpu(
     while offset < total_samples:
         chunk = audio[offset : offset + chunk_samples]
         base = offset / SAMPLE_RATE
-        segments, _ = model.transcribe(chunk, vad_filter=settings.whisper_vad)
+        segments, _ = model.transcribe(
+            chunk,
+            vad_filter=settings.whisper_vad,
+            initial_prompt=settings.zh_prompt,
+        )
         for seg in segments:
             text = seg.text.strip()
             if text:
@@ -80,10 +101,10 @@ def _transcribe_cpu(
             if on_progress and total_seconds:
                 on_progress(min((base + seg.end) / total_seconds, 0.99))
         if on_partial:
-            on_partial(" ".join(parts))
+            on_partial(_to_traditional(" ".join(parts)))
         offset += chunk_samples
 
-    return " ".join(parts).strip()
+    return _to_traditional(" ".join(parts).strip())
 
 
 # --- 快速模式：外部 GPU（Groq / OpenAI 相容轉錄 API）------------------------
@@ -107,7 +128,11 @@ def _transcribe_chunk_remote(wav_bytes: bytes, api_key: str) -> str:
         f"{settings.stt_base_url}/audio/transcriptions",
         headers={"Authorization": f"Bearer {api_key}"},
         files={"file": ("chunk.wav", wav_bytes, "audio/wav")},
-        data={"model": settings.stt_model, "response_format": "text"},
+        data={
+            "model": settings.stt_model,
+            "response_format": "text",
+            "prompt": settings.zh_prompt,
+        },
         timeout=300,
     )
     if resp.status_code in (401, 403):
@@ -138,6 +163,6 @@ def _transcribe_groq(
         if on_progress and total_samples:
             on_progress(min(offset / total_samples, 0.99))
         if on_partial:
-            on_partial(" ".join(parts))
+            on_partial(_to_traditional(" ".join(parts)))
 
-    return " ".join(parts).strip()
+    return _to_traditional(" ".join(parts).strip())
