@@ -1,10 +1,19 @@
+import { Platform, useWindowDimensions } from "react-native";
 import { Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 
+const BREAKPOINT = 768;
+
 export default function TabLayout() {
+  const { width } = useWindowDimensions();
+  const isDesktop = Platform.OS === "web" && width >= BREAKPOINT;
+
   return (
     <Tabs
+      // 桌面隱藏底部 Tab Bar，導覽由 root layout 的 Sidebar 負責
+      tabBar={isDesktop ? () => null : undefined}
       screenOptions={{
+        headerShown: false,
         tabBarActiveTintColor: "#2563eb",
         tabBarInactiveTintColor: "#9ca3af",
         tabBarStyle: { borderTopColor: "#e5e7eb" },
