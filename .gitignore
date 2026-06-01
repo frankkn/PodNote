@@ -12,6 +12,9 @@ frontend/.expo/
 frontend/dist/
 frontend/web-build/
 
+# Claude Code（含 session 權限記錄，不應進版控）
+.claude/
+
 # OS
 .DS_Store
 Thumbs.db
