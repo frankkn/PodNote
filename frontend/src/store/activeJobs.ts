@@ -1,5 +1,9 @@
 import { TranscribeMode } from "@/api/backend";
 
+// 轉錄狀態（state）：pending → running → done / error
+// 摘要狀態（noteStatus）：轉錄 done 後自動跑 Gemini → summarizing → ready / error
+export type NoteStatus = "idle" | "summarizing" | "ready" | "error";
+
 export interface ActiveJob {
   id: string;
   url: string;
@@ -10,6 +14,8 @@ export interface ActiveJob {
   title: string | null;
   transcript: string | null;
   error: string | null;
+  noteStatus: NoteStatus;
+  noteError: string | null;
 }
 
 let _jobs: ActiveJob[] = [];
@@ -32,6 +38,8 @@ export function addJob(id: string, url: string, mode: TranscribeMode): void {
       title: null,
       transcript: null,
       error: null,
+      noteStatus: "idle",
+      noteError: null,
     },
   ];
   _notify();

@@ -12,12 +12,53 @@ import {
 import { useRouter } from "expo-router";
 
 import { createJob, TranscribeMode } from "@/api/backend";
-import { GROQ_KEY_STORAGE } from "@/config";
+import { summarize } from "@/api/gemini";
+import { GEMINI_KEY_STORAGE, GROQ_KEY_STORAGE } from "@/config";
 import { getItem } from "@/lib/secureStore";
-import { addJob, dismissJob, getJobs, ActiveJob } from "@/store/activeJobs";
+import { addJob, dismissJob, getJobs, updateJob, ActiveJob } from "@/store/activeJobs";
 import { savePending } from "@/store/results";
+import { saveNote } from "@/store/notes";
 import { startPolling } from "@/hooks/usePolling";
 import { useActiveJobs } from "@/hooks/useActiveJobs";
+
+// 轉錄完成後自動呼叫 Gemini 生成摘要並存檔。模組層函式：即使使用者切走分頁，
+// 摘要仍會在背景完成；完成後「查看筆記」可直接秒開（note 頁讀本機存檔）。
+async function generateSummary(jobId: string, url: string): Promise<void> {
+  const job = getJobs().find((j) => j.id === jobId);
+  if (!job?.transcript) return;
+  // 保留 pending 當 fallback（萬一摘要失敗，note 頁仍能重試）
+  savePending(jobId, {
+    transcript: job.transcript,
+    title: job.title ?? "(未命名)",
+    url,
+  });
+  updateJob(jobId, { noteStatus: "summarizing", noteError: null });
+  try {
+    const key = (await getItem(GEMINI_KEY_STORAGE))?.trim();
+    if (!key) {
+      updateJob(jobId, {
+        noteStatus: "error",
+        noteError: "尚未設定 Gemini API Key（到設定頁輸入後可重看）",
+      });
+      return;
+    }
+    const markdown = await summarize(job.transcript, key);
+    await saveNote({
+      id: jobId,
+      title: job.title ?? "(未命名)",
+      url,
+      markdown,
+      transcript: job.transcript,
+      createdAt: Date.now(),
+    });
+    updateJob(jobId, { noteStatus: "ready" });
+  } catch (e) {
+    updateJob(jobId, {
+      noteStatus: "error",
+      noteError: e instanceof Error ? e.message : "摘要失敗",
+    });
+  }
+}
 
 function getDisplayTitle(job: ActiveJob): string {
   if (job.title) return job.title;
@@ -53,8 +94,8 @@ function JobCard({
     <View
       style={[
         cardStyles.card,
-        isDone && cardStyles.cardDone,
-        isError && cardStyles.cardError,
+        job.noteStatus === "ready" && cardStyles.cardDone,
+        (isError || job.noteStatus === "error") && cardStyles.cardError,
       ]}
     >
       <View style={cardStyles.header}>
@@ -94,10 +135,28 @@ function JobCard({
         </Text>
       ) : null}
 
-      {isDone && (
+      {isDone && (job.noteStatus === "idle" || job.noteStatus === "summarizing") && (
+        <View style={cardStyles.summarizing}>
+          <ActivityIndicator size="small" />
+          <Text style={cardStyles.summarizingText}>摘要中…</Text>
+        </View>
+      )}
+
+      {isDone && job.noteStatus === "ready" && (
         <Pressable style={cardStyles.viewBtn} onPress={onView}>
           <Text style={cardStyles.viewBtnText}>查看筆記 →</Text>
         </Pressable>
+      )}
+
+      {isDone && job.noteStatus === "error" && (
+        <>
+          <Text style={[cardStyles.stage, cardStyles.stageError]} numberOfLines={2}>
+            摘要失敗：{job.noteError}
+          </Text>
+          <Pressable style={cardStyles.viewBtn} onPress={onView}>
+            <Text style={cardStyles.viewBtnText}>重試 / 查看 →</Text>
+          </Pressable>
+        </>
       )}
     </View>
   );
@@ -128,16 +187,7 @@ export default function GenerateTab() {
       addJob(job_id, trimmedUrl, mode);
       setUrl("");
       startPolling(job_id)
-        .then(() => {
-          const done = getJobs().find((j) => j.id === job_id);
-          if (done?.transcript) {
-            savePending(job_id, {
-              transcript: done.transcript,
-              title: done.title ?? "(未命名)",
-              url: trimmedUrl,
-            });
-          }
-        })
+        .then(() => generateSummary(job_id, trimmedUrl))
         .catch(() => {});
     } catch (e) {
       setMsg(e instanceof Error ? e.message : "發生未知錯誤");
@@ -288,4 +338,11 @@ const cardStyles = StyleSheet.create({
     marginTop: 2,
   },
   viewBtnText: { color: "#fff", fontWeight: "600", fontSize: 14 },
+  summarizing: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    alignSelf: "flex-end",
+  },
+  summarizingText: { fontSize: 13, color: "#2563eb", fontWeight: "600" },
 });
