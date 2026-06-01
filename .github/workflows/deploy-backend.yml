@@ -2,9 +2,9 @@ name: Deploy Backend to HF Spaces
 
 on:
   push:
-    branches: [main]
-    paths:
-      - "backend/**"   # 只有 backend/ 有變動才觸發，改前端不會重跑
+    tags:
+      - "v*"             # git tag v1.x.x && git push origin v1.x.x 才觸發
+  workflow_dispatch:     # 或在 GitHub Actions 頁面手動觸發
 
 jobs:
   deploy:
