@@ -4,7 +4,25 @@
 
 ## 立即打開 Web App
 
-在專案根目錄 `C:\Users\frank2_yang\Desktop\PodNote` 開兩個終端機。
+最快方式：不用安裝，直接開已部署的線上版。
+
+```text
+https://frankkn-podnote-api.hf.space
+```
+
+第一次開 Hugging Face Space 可能會等幾秒喚醒服務。打開 App 後，到設定頁輸入自己的 Gemini API Key，就可以貼 Podcast / YouTube 連結產生筆記。
+
+服務狀態檢查：
+
+```text
+https://frankkn-podnote-api.hf.space/health
+```
+
+## 本機啟動
+
+如果你要在自己的電腦跑，或要修改程式，才需要以下步驟。
+
+在專案根目錄 `C:\Users\frank2_yang\Desktop\PodNote` 開終端機。
 
 ### 1. 啟動後端 API
 
