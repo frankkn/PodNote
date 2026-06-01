@@ -98,7 +98,7 @@ export default function Home() {
           <Text style={[styles.modeTitle, mode === "gpu" && styles.modeTitleOn]}>
             快速（推薦）
           </Text>
-          <Text style={styles.modeHint}>外部 GPU，需 Groq Key</Text>
+          <Text style={styles.modeHint}>外部GPU，須設定Gemini + Groq Key</Text>
         </Pressable>
         <Pressable
           style={[styles.mode, mode === "cpu" && styles.modeOn]}
@@ -108,7 +108,7 @@ export default function Home() {
           <Text style={[styles.modeTitle, mode === "cpu" && styles.modeTitleOn]}>
             慢速（簡單）
           </Text>
-          <Text style={styles.modeHint}>免設定，速度較慢</Text>
+          <Text style={styles.modeHint}>只需設定Gemini Key，速度較慢。</Text>
         </Pressable>
       </View>
 
