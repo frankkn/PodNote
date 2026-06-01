@@ -220,3 +220,19 @@ Groq Key 只有快速模式才會用到，後端用完即丟、不會保存。
 - **長節目分段轉檔**：音訊依序切成每段 5 分鐘轉錄，並在等待時即時顯示累積逐字稿，60 分鐘以內的節目亦可處理
 - **防濫用機制**：每 IP 每小時限 10 次、CPU 模式一次只跑一個任務、節目長度上限 60 分鐘
 - **音訊長度上限**：CPU 模式 60 分鐘、GPU 模式（Groq）120 分鐘
+
+---
+
+### v1.2.0 — 2026-06-01
+
+**修正**
+
+- **修復網頁版桌面佈局**：v1.1.0 的桌面雙欄 UI 在瀏覽器會白畫面、或切換後內容空白，本版徹底修正：
+  - 以 emoji 取代 `@expo/vector-icons`（其字型載入在 web 會觸發 `CSSStyleDeclaration` 崩潰）
+  - Sidebar 改用 `router.push` 取代 `Link asChild`（避免產生會崩潰的 `<a>` 包裝）
+  - 內容卡片改用 flex 撐滿高度（原本被 `alignSelf:center` 壓成 2px 高，內容看不到）
+- 新增 Playwright 無頭瀏覽器測試（`frontend/uitest.cjs`），可在本機驗證網頁版操作
+
+**維運**
+
+- GitHub Actions 改用 `huggingface_hub` 上傳，正確處理二進位字型檔（XET storage）
