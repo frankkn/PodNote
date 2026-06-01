@@ -1,6 +1,6 @@
 # PodNote
 
-把 Podcast / YouTube 音訊轉成逐字稿，再用 Gemini 整理成筆記的 Web App。
+把 Podcast 音訊轉成逐字稿，再用 Gemini 整理成筆記的 Web App。
 
 ## 立即打開 Web App
 
@@ -10,18 +10,48 @@
 https://frankkn-podnote-api.hf.space
 ```
 
-第一次開 Hugging Face Space 可能會等幾秒喚醒服務。打開 App 後，到設定頁輸入自己的 Gemini API Key（整理筆記用）；若要用「快速」轉錄，再加上自己的 Groq API Key。設定完就可以貼 Podcast / YouTube 連結產生筆記。
+第一次開 Hugging Face Space 可能會等幾秒喚醒服務。打開 App 後，到設定頁輸入自己的 Gemini API Key（整理筆記用）；若要用「快速」轉錄，再加上自己的 Groq API Key。設定完就可以貼 Podcast 連結產生筆記。
 
 轉錄有兩種模式：
 
-- **快速（推薦）**：用外部 GPU（Groq Whisper API）轉錄，又快又準。需要在設定頁輸入自己的 Groq API Key（到 console.groq.com 免費申請）。金鑰存在本機，產生筆記時才傳到後端呼叫 Groq，用完即丟、不會保存。
-- **慢速（簡單）**：用伺服器 CPU 轉錄，免申請任何 key，但速度較慢、有長度與併發限制。
+- **快速（推薦）**：用外部 GPU（Groq Whisper API）轉錄，又快又準。需要在設定頁輸入自己的 Groq API Key 跟 Gemini API Key（參考下方申請 API Key 流程，非常簡單！）。金鑰存在本機，產生筆記時才傳到後端呼叫 Groq，用完即丟、不會保存。
+- **慢速（簡單）**：用伺服器 CPU 轉錄，只需要申請 Gemini API Key，但速度較慢、有長度與併發限制。
 
 服務狀態檢查：
 
 ```text
 https://frankkn-podnote-api.hf.space/health
 ```
+
+## 申請 API Key
+
+### Gemini API Key（必要）
+
+用於把逐字稿整理成筆記，免費額度通常足夠個人使用。
+
+1. 開啟 [https://aistudio.google.com](https://aistudio.google.com)，用 Google 帳號登入。
+2. 左側選單點「**Get API key**」。
+3. 點「**Create API key**」→ 選擇一個 Google Cloud 專案（或讓它自動建立）→ 點「建立 API 金鑰」。
+4. 複製畫面上顯示的金鑰（以 `AIza` 開頭）。
+5. 到 App 的**設定頁**，把金鑰貼入「Gemini API Key」欄位，按儲存。
+
+> 若遇到 429 配額錯誤，通常是該 key 對特定模型的免費額度用完。可到 [aistudio.google.com](https://aistudio.google.com) 用新的 Google 專案重建一把 key。
+
+---
+
+### Groq API Key（快速模式用，選填）
+
+只有選「快速（推薦）」轉錄模式才需要。目前免費、不需綁信用卡。
+
+1. 開啟 [https://console.groq.com](https://console.groq.com)，用 Google 帳號或 email 登入／註冊。
+2. 右上角選單點「**API Keys**」。
+3. 點「**Create API Key**」，取個名字（例如 `podnote`），按建立。
+4. 複製畫面上顯示的金鑰（以 `gsk_` 開頭）。**此金鑰只會顯示一次**，請立即複製。
+5. 到 App 的**設定頁**，把金鑰貼入「Groq API Key」欄位，按儲存。
+
+> 沒有 Groq Key 也沒關係，改選「慢速（簡單）」模式即可使用，不需任何額外設定。
+
+---
 
 ## 本機啟動
 
@@ -145,7 +175,7 @@ uvicorn app.main:app --reload --port 8000
 - **快速（推薦）**：呼叫外部 GPU（Groq Whisper API），通常幾秒到數十秒完成，又快又準，但要自備 Groq API Key（免費申請）。
 - **慢速（簡單）**：用伺服器自己的 CPU 跑，免任何 key，適合只想試一下的人，但較慢、節目長度與同時人數有限制。
 
-兩種模式都不會保存你的 Groq Key，後端只在轉錄當下過水使用。
+Groq Key 只有快速模式才會用到，後端用完即丟、不會保存。
 
 ### 第一次啟動很慢正常嗎？
 
@@ -169,7 +199,7 @@ uvicorn app.main:app --reload --port 8000
 
 **功能**
 
-- 貼上 Podcast / YouTube 連結，自動下載音訊、轉錄成逐字稿，再用 Gemini 整理成結構化繁體中文筆記
+- 貼上 Podcast 連結，自動下載音訊、轉錄成逐字稿，再用 Gemini 整理成結構化繁體中文筆記
 - 雙模式轉錄
   - **快速（推薦）**：呼叫 Groq Whisper API（外部 GPU），通常數秒到數十秒完成；使用者自帶 Groq Key，過水不存
   - **慢速（簡單）**：在伺服器 CPU 執行 faster-whisper，免申請任何 key

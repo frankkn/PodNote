@@ -163,10 +163,10 @@ export default function GenerateTab() {
       contentContainerStyle={styles.content}
       keyboardShouldPersistTaps="handled"
     >
-      <Text style={styles.label}>Podcast / YouTube 連結</Text>
+      <Text style={styles.label}>Podcast 連結</Text>
       <TextInput
         style={styles.input}
-        placeholder="https://…（podcast 單集或 YouTube 影片）"
+        placeholder="https://…（podcast 單集連結）"
         autoCapitalize="none"
         autoCorrect={false}
         keyboardType="url"
