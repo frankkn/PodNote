@@ -25,21 +25,29 @@ def _client_ip(request: Request) -> str:
     return request.client.host if request.client else "unknown"
 
 
-def _run_job(job_id: str, url: str) -> None:
-    """背景執行：檢查長度 → 下載 → 轉檔。失敗時把錯誤寫進 job。"""
+def _run_job(job_id: str, url: str, mode: str, api_key: str | None) -> None:
+    """背景執行：檢查長度 → 下載 → 轉檔。失敗時把錯誤寫進 job。
+
+    api_key 僅在此函式內過水使用，不寫進 job_store、不記錄。
+    """
     store.update(job_id, state=JobState.running, stage="probing")
     try:
         title, duration = probe(url)
         store.update(job_id, title=title)
 
-        if duration and duration > settings.max_audio_seconds:
+        limit = (
+            settings.max_audio_seconds_gpu
+            if mode == "gpu"
+            else settings.max_audio_seconds
+        )
+        if duration and duration > limit:
             store.update(
                 job_id,
                 state=JobState.error,
                 stage="error",
                 error=(
                     f"節目太長（約 {duration // 60} 分鐘），"
-                    f"目前上限 {settings.max_audio_seconds // 60} 分鐘。"
+                    f"此模式上限 {limit // 60} 分鐘。"
                 ),
             )
             return
@@ -54,7 +62,13 @@ def _run_job(job_id: str, url: str) -> None:
         def on_partial(partial: str) -> None:
             store.update(job_id, transcript=partial)
 
-        text = transcribe(path, on_progress=on_progress, on_partial=on_partial)
+        text = transcribe(
+            path,
+            mode=mode,
+            api_key=api_key,
+            on_progress=on_progress,
+            on_partial=on_partial,
+        )
         store.update(
             job_id,
             state=JobState.done,
@@ -70,6 +84,13 @@ def _run_job(job_id: str, url: str) -> None:
 def create_job(
     payload: CreateJobRequest, background: BackgroundTasks, request: Request
 ) -> CreateJobResponse:
+    # 快速模式必須帶 key（key 不存、僅過水）
+    if payload.mode == "gpu" and not (payload.groq_api_key or "").strip():
+        raise HTTPException(
+            status_code=400,
+            detail="快速模式需要 Groq API Key，請到設定頁輸入，或改用慢速模式。",
+        )
+
     # 防濫用：速率限制（每 IP）
     if not rate_limiter.allow(_client_ip(request)):
         raise HTTPException(
@@ -79,15 +100,25 @@ def create_job(
                 "請稍後再試。"
             ),
         )
-    # 防濫用：同時處理數（免費 CPU 一次一個）
+    # 防濫用：CPU 一次只跑一個（保護免費伺服器 CPU）
+    if (
+        payload.mode == "cpu"
+        and store.active_count_for_mode("cpu") >= settings.max_cpu_concurrent_jobs
+    ):
+        raise HTTPException(
+            status_code=429,
+            detail="慢速模式目前有任務在處理中（一次只能一個），請稍後再試或改用快速模式。",
+        )
+    # 防濫用：所有任務的整體上限（保護下載頻寬/記憶體）
     if store.active_count() >= settings.max_concurrent_jobs:
         raise HTTPException(
             status_code=429,
-            detail="目前有任務正在處理中（免費伺服器一次只能處理一個），請稍後再試。",
+            detail="伺服器目前較忙，請稍後再試。",
         )
 
-    job = store.create()
-    background.add_task(_run_job, job.id, str(payload.url))
+    key = (payload.groq_api_key or "").strip() or None
+    job = store.create(mode=payload.mode)
+    background.add_task(_run_job, job.id, str(payload.url), payload.mode, key)
     return CreateJobResponse(job_id=job.id, state=job.state)
 
 

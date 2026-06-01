@@ -1,6 +1,10 @@
+import io
 import threading
+import wave
 from typing import Callable, Optional
 
+import httpx
+import numpy as np
 from faster_whisper import WhisperModel
 from faster_whisper.audio import decode_audio
 
@@ -10,6 +14,28 @@ SAMPLE_RATE = 16000
 
 _model: Optional[WhisperModel] = None
 _model_lock = threading.Lock()
+
+ProgressCb = Optional[Callable[[float], None]]
+PartialCb = Optional[Callable[[str], None]]
+
+
+def transcribe(
+    path: str,
+    mode: str = "gpu",
+    api_key: Optional[str] = None,
+    on_progress: ProgressCb = None,
+    on_partial: PartialCb = None,
+) -> str:
+    """轉錄音檔。mode="cpu" 用本機 faster-whisper（慢、免 key）；
+    mode="gpu" 呼叫 Groq/OpenAI 相容 API（快、需使用者自帶 key）。"""
+    if mode == "gpu":
+        if not api_key:
+            raise ValueError("快速模式需要 Groq API Key，請到設定頁輸入。")
+        return _transcribe_groq(path, api_key, on_progress, on_partial)
+    return _transcribe_cpu(path, on_progress, on_partial)
+
+
+# --- 慢速模式：本機 CPU（faster-whisper）-------------------------------------
 
 
 def _get_model() -> WhisperModel:
@@ -26,10 +52,8 @@ def _get_model() -> WhisperModel:
     return _model
 
 
-def transcribe(
-    path: str,
-    on_progress: Optional[Callable[[float], None]] = None,
-    on_partial: Optional[Callable[[str], None]] = None,
+def _transcribe_cpu(
+    path: str, on_progress: ProgressCb, on_partial: PartialCb
 ) -> str:
     """分段轉檔：把音檔切成數段依序轉，逐段回報進度與累積逐字稿。
 
@@ -58,5 +82,62 @@ def transcribe(
         if on_partial:
             on_partial(" ".join(parts))
         offset += chunk_samples
+
+    return " ".join(parts).strip()
+
+
+# --- 快速模式：外部 GPU（Groq / OpenAI 相容轉錄 API）------------------------
+
+
+def _to_wav_bytes(samples: np.ndarray) -> bytes:
+    """把 16kHz float32 音訊片段編成 wav bytes（不落地、直接上傳）。"""
+    pcm = (np.clip(samples, -1.0, 1.0) * 32767).astype("<i2")
+    buf = io.BytesIO()
+    with wave.open(buf, "wb") as w:
+        w.setnchannels(1)
+        w.setsampwidth(2)
+        w.setframerate(SAMPLE_RATE)
+        w.writeframes(pcm.tobytes())
+    return buf.getvalue()
+
+
+def _transcribe_chunk_remote(wav_bytes: bytes, api_key: str) -> str:
+    """把一段 wav 丟給 Groq/OpenAI 相容的轉錄 API。key 過水使用、不記錄。"""
+    resp = httpx.post(
+        f"{settings.stt_base_url}/audio/transcriptions",
+        headers={"Authorization": f"Bearer {api_key}"},
+        files={"file": ("chunk.wav", wav_bytes, "audio/wav")},
+        data={"model": settings.stt_model, "response_format": "text"},
+        timeout=300,
+    )
+    if resp.status_code in (401, 403):
+        raise ValueError("Groq API Key 無效或無權限，請到設定頁確認。")
+    if resp.status_code == 429:
+        raise ValueError("Groq 配額不足或請求過於頻繁，請稍後再試。")
+    resp.raise_for_status()
+    return resp.text.strip()
+
+
+def _transcribe_groq(
+    path: str, api_key: str, on_progress: ProgressCb, on_partial: PartialCb
+) -> str:
+    """分段上傳到外部 GPU API：保留與 CPU 模式相同的進度/部分逐字稿 UX，
+    同時讓每段 wav 安全低於 API 的單檔大小上限。"""
+    audio = decode_audio(path, sampling_rate=SAMPLE_RATE)
+    total_samples = len(audio)
+    chunk_samples = max(1, settings.stt_chunk_seconds * SAMPLE_RATE)
+
+    parts: list[str] = []
+    offset = 0
+    while offset < total_samples:
+        chunk = audio[offset : offset + chunk_samples]
+        text = _transcribe_chunk_remote(_to_wav_bytes(chunk), api_key)
+        if text:
+            parts.append(text)
+        offset += chunk_samples
+        if on_progress and total_samples:
+            on_progress(min(offset / total_samples, 0.99))
+        if on_partial:
+            on_partial(" ".join(parts))
 
     return " ".join(parts).strip()

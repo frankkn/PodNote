@@ -11,13 +11,16 @@ import {
 } from "react-native";
 import { Link, useFocusEffect, useRouter } from "expo-router";
 
-import { createJob } from "@/api/backend";
+import { createJob, TranscribeMode } from "@/api/backend";
+import { GROQ_KEY_STORAGE } from "@/config";
+import { getItem } from "@/lib/secureStore";
 import { useJobPolling } from "@/hooks/usePolling";
 import { savePending } from "@/store/results";
 import { deleteNote, listNotes, SavedNote } from "@/store/notes";
 
 export default function Home() {
   const [url, setUrl] = useState("");
+  const [mode, setMode] = useState<TranscribeMode>("gpu");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [notes, setNotes] = useState<SavedNote[]>([]);
@@ -32,10 +35,18 @@ export default function Home() {
   useFocusEffect(refresh);
 
   const onSubmit = async () => {
-    setBusy(true);
     setMsg(null);
+    let groqKey: string | undefined;
+    if (mode === "gpu") {
+      groqKey = (await getItem(GROQ_KEY_STORAGE))?.trim() || undefined;
+      if (!groqKey) {
+        setMsg("快速模式需要 Groq API Key，請先到設定頁輸入，或改用慢速模式。");
+        return;
+      }
+    }
+    setBusy(true);
     try {
-      const { job_id } = await createJob(url.trim());
+      const { job_id } = await createJob(url.trim(), mode, groqKey);
       const done = await start(job_id);
       savePending(job_id, {
         transcript: done.transcript ?? "",
@@ -77,6 +88,30 @@ export default function Home() {
         onChangeText={setUrl}
         editable={!busy}
       />
+
+      <View style={styles.modeRow}>
+        <Pressable
+          style={[styles.mode, mode === "gpu" && styles.modeOn]}
+          onPress={() => setMode("gpu")}
+          disabled={busy}
+        >
+          <Text style={[styles.modeTitle, mode === "gpu" && styles.modeTitleOn]}>
+            快速（推薦）
+          </Text>
+          <Text style={styles.modeHint}>外部 GPU，需 Groq Key</Text>
+        </Pressable>
+        <Pressable
+          style={[styles.mode, mode === "cpu" && styles.modeOn]}
+          onPress={() => setMode("cpu")}
+          disabled={busy}
+        >
+          <Text style={[styles.modeTitle, mode === "cpu" && styles.modeTitleOn]}>
+            慢速（簡單）
+          </Text>
+          <Text style={styles.modeHint}>免設定，速度較慢</Text>
+        </Pressable>
+      </View>
+
       <Button
         title={busy ? "處理中…" : "產生筆記"}
         onPress={onSubmit}
@@ -84,7 +119,7 @@ export default function Home() {
       />
 
       <Link href="/settings" style={styles.link}>
-        設定 Gemini API Key →
+        設定 API Keys →
       </Link>
 
       {busy && (
@@ -142,6 +177,18 @@ const styles = StyleSheet.create({
     padding: 12,
     fontSize: 15,
   },
+  modeRow: { flexDirection: "row", gap: 10 },
+  mode: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: "#ccc",
+    borderRadius: 8,
+    padding: 10,
+  },
+  modeOn: { borderColor: "#2563eb", backgroundColor: "#eff6ff" },
+  modeTitle: { fontSize: 14, fontWeight: "600", color: "#444" },
+  modeTitleOn: { color: "#2563eb" },
+  modeHint: { fontSize: 12, color: "#888", marginTop: 2 },
   link: { color: "#2563eb", marginTop: 4 },
   status: { flexDirection: "row", alignItems: "center", gap: 8 },
   statusText: { color: "#444" },

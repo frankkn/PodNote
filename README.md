@@ -12,6 +12,11 @@ https://frankkn-podnote-api.hf.space
 
 第一次開 Hugging Face Space 可能會等幾秒喚醒服務。打開 App 後，到設定頁輸入自己的 Gemini API Key，就可以貼 Podcast / YouTube 連結產生筆記。
 
+轉錄有兩種模式：
+
+- **快速（推薦）**：用外部 GPU（Groq Whisper API）轉錄，又快又準。需要在設定頁輸入自己的 Groq API Key（到 console.groq.com 免費申請）。金鑰存在本機，產生筆記時才傳到後端呼叫 Groq，用完即丟、不會保存。
+- **慢速（簡單）**：用伺服器 CPU 轉錄，免申請任何 key，但速度較慢、有長度與併發限制。
+
 服務狀態檢查：
 
 ```text
@@ -82,10 +87,16 @@ backend/.env
 
 ```env
 ALLOWED_ORIGINS=http://localhost:8081,http://localhost:19006
+# 慢速模式（CPU）
 WHISPER_MODEL=small
 WHISPER_DEVICE=cpu
 WHISPER_COMPUTE_TYPE=int8
+# 快速模式（GPU，Groq/OpenAI 相容 API）。注意：API Key 由使用者在前端輸入，不寫在這裡。
+STT_MODEL=whisper-large-v3
+STT_BASE_URL=https://api.groq.com/openai/v1
 ```
+
+> 想換成 OpenAI Whisper API，把 `STT_BASE_URL` 改成 `https://api.openai.com/v1`、`STT_MODEL` 改成 `whisper-1` 即可；使用者輸入的就改成 OpenAI key。
 
 ### 前端 `.env`
 

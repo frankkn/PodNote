@@ -12,13 +12,18 @@ export interface JobStatus {
   error?: string | null;
 }
 
+export type TranscribeMode = "cpu" | "gpu";
+
 export async function createJob(
-  url: string
+  url: string,
+  mode: TranscribeMode,
+  groqApiKey?: string
 ): Promise<{ job_id: string; state: JobState }> {
   const res = await fetch(`${BACKEND_URL}/jobs`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ url }),
+    // groq_api_key 只在快速模式送出，後端過水使用、不儲存。
+    body: JSON.stringify({ url, mode, groq_api_key: groqApiKey ?? null }),
   });
   if (!res.ok) {
     // 後端會在 detail 帶友善訊息（例如速率限制、忙碌中）
