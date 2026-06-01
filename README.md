@@ -1,31 +1,121 @@
-# PodNote — Podcast 自動筆記工具
+# PodNote
 
-輸入 Podcast 單集連結，後端自動下載並用 faster-whisper 轉逐字稿，前端用使用者自備的
-Gemini 金鑰直連 Google 生成結構化筆記（自動略過廣告閒聊）。
+把 Podcast / YouTube 音訊轉成逐字稿，再用 Gemini 整理成筆記的 Web App。
 
-## 架構
+## 立即打開 Web App
 
+在專案根目錄 `C:\Users\frank2_yang\Desktop\PodNote` 開兩個終端機。
+
+### 1. 啟動後端 API
+
+```powershell
+cd backend
+py -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+copy .env.example .env
+uvicorn app.main:app --reload --port 8000
 ```
-前端 (Expo)                         後端 (FastAPI @ HF Spaces)
-  │  POST /jobs {url}                 │
-  ├──────────────────────────────────►  建立任務、背景下載+轉檔
-  │  GET /jobs/{id} (每 3 秒輪詢)       │
-  ◄──────────────────────────────────┤  回傳 state / progress / transcript
-  │
-  │  直連 Google（本機金鑰）
-  └──────────────► Gemini API：摘要 + 篩廣告 → 結構化筆記
+
+### 2. 打開網頁
+
+後端啟動後，直接用瀏覽器開：
+
+```text
+http://localhost:8000
 ```
 
-關鍵設計：轉檔耗時長，採「建立任務 + 輪詢」非同步模式，避免 HTTP 逾時。
+API 文件在：
 
-## 目錄
+```text
+http://localhost:8000/docs
+```
 
-- `backend/` — FastAPI 服務，部署到 Hugging Face Spaces（Docker）
-- `frontend/` — Expo App，支援 Web 與 Android
+## 前端開發模式
 
-各自的 README 有啟動步驟。
+如果你要修改前端畫面，請另外開一個終端機：
 
-## 本地一次跑起來
+```powershell
+cd frontend
+npm install
+copy .env.example .env
+npm run web
+```
 
-1. 後端：`cd backend` → 建 venv → `uvicorn app.main:app --reload --port 8000`
-2. 前端：`cd frontend` → `npm install` → `npx expo start`
+Expo 啟動後，終端機會顯示 Web App 的網址，通常是：
+
+```text
+http://localhost:8081
+```
+
+如果 Expo 顯示其他 port，請以終端機顯示的網址為準。
+
+## 必要設定
+
+### 後端 `.env`
+
+檔案位置：
+
+```text
+backend/.env
+```
+
+可先用 `.env.example` 的預設值。常用設定：
+
+```env
+ALLOWED_ORIGINS=http://localhost:8081,http://localhost:19006
+WHISPER_MODEL=small
+WHISPER_DEVICE=cpu
+WHISPER_COMPUTE_TYPE=int8
+```
+
+### 前端 `.env`
+
+檔案位置：
+
+```text
+frontend/.env
+```
+
+本機開發通常使用：
+
+```env
+EXPO_PUBLIC_BACKEND_URL=http://localhost:8000
+EXPO_PUBLIC_GEMINI_MODEL=gemini-2.5-flash
+```
+
+Gemini API Key 不是寫在 `.env` 裡，而是在 App 的設定頁輸入。
+
+## 專案結構
+
+```text
+PodNote/
+  backend/   FastAPI API、轉錄工作、已匯出的 Web 靜態檔
+  frontend/  Expo / React Native Web 前端原始碼
+```
+
+## 常見問題
+
+### 我只想馬上用，要跑哪個？
+
+只跑後端就好：
+
+```powershell
+cd backend
+.\.venv\Scripts\Activate.ps1
+uvicorn app.main:app --reload --port 8000
+```
+
+然後開 `http://localhost:8000`。
+
+### 第一次啟動很慢正常嗎？
+
+正常。第一次安裝 Python 套件、下載 Whisper 模型，或處理較長音訊時都會比較久。
+
+### 前端連不到後端怎麼辦？
+
+確認這三件事：
+
+1. 後端正在 `http://localhost:8000` 執行。
+2. `frontend/.env` 裡的 `EXPO_PUBLIC_BACKEND_URL` 是 `http://localhost:8000`。
+3. 如果你改了 `.env`，請重新啟動 Expo。
