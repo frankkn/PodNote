@@ -11,19 +11,31 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Push backend/ to HF Space
+      - name: Deploy backend/ to HF Space
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
-          git config --global user.email "ci@github.com"
-          git config --global user.name "GitHub Actions"
+          pip install -q "huggingface_hub>=0.23"
+          python - <<'PYEOF'
+          import os
+          from huggingface_hub import HfApi
 
-          git clone "https://frankkn:${HF_TOKEN}@huggingface.co/spaces/frankkn/podnote-api" hf-space
+          api = HfApi(token=os.environ["HF_TOKEN"])
+          ref = os.environ.get("GITHUB_REF_NAME", "unknown")
+          sha = os.environ.get("GITHUB_SHA", "unknown")[:7]
 
-          cd hf-space
-          git rm -r . --quiet
-          cp -r ../backend/. .
-
-          git add -A
-          git commit -m "Deploy ${{ github.ref_name }} (${{ github.sha }})"
-          git push origin main
+          api.upload_folder(
+              folder_path="backend",
+              repo_id="frankkn/podnote-api",
+              repo_type="space",
+              commit_message=f"Deploy {ref} ({sha})",
+              delete_patterns=["*"],      # 完整替換：先刪除 HF 上的舊檔
+              ignore_patterns=[           # 不上傳這些本機暫存目錄
+                  "**/.venv/**",
+                  "**/__pycache__/**",
+                  "**/_data/**",
+                  "**/*.pyc",
+              ],
+          )
+          print(f"✅ Deployed {ref} ({sha}) to HF Space")
+          PYEOF
