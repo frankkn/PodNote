@@ -10,7 +10,7 @@
 https://frankkn-podnote-api.hf.space
 ```
 
-第一次開 Hugging Face Space 可能會等幾秒喚醒服務。打開 App 後，到設定頁輸入自己的 Gemini API Key，就可以貼 Podcast / YouTube 連結產生筆記。
+第一次開 Hugging Face Space 可能會等幾秒喚醒服務。打開 App 後，到設定頁輸入自己的 Gemini API Key（整理筆記用）；若要用「快速」轉錄，再加上自己的 Groq API Key。設定完就可以貼 Podcast / YouTube 連結產生筆記。
 
 轉錄有兩種模式：
 
@@ -113,7 +113,10 @@ EXPO_PUBLIC_BACKEND_URL=http://localhost:8000
 EXPO_PUBLIC_GEMINI_MODEL=gemini-2.5-flash
 ```
 
-Gemini API Key 不是寫在 `.env` 裡，而是在 App 的設定頁輸入。
+API Key 都不寫在 `.env` 裡，而是在 App 的設定頁輸入：
+
+- **Gemini API Key**：整理筆記用。瀏覽器直接連 Google，不經過後端。
+- **Groq API Key**：「快速」轉錄用（選填）。存在本機，產生筆記時才隨請求傳到後端呼叫 Groq，用完即丟、不保存。沒填仍可用「慢速」模式。
 
 ## 專案結構
 
@@ -137,9 +140,16 @@ uvicorn app.main:app --reload --port 8000
 
 然後開 `http://localhost:8000`。
 
+### 快速和慢速模式差在哪？要選哪個？
+
+- **快速（推薦）**：呼叫外部 GPU（Groq Whisper API），通常幾秒到數十秒完成，又快又準，但要自備 Groq API Key（免費申請）。
+- **慢速（簡單）**：用伺服器自己的 CPU 跑，免任何 key，適合只想試一下的人，但較慢、節目長度與同時人數有限制。
+
+兩種模式都不會保存你的 Groq Key，後端只在轉錄當下過水使用。
+
 ### 第一次啟動很慢正常嗎？
 
-正常。第一次安裝 Python 套件、下載 Whisper 模型，或處理較長音訊時都會比較久。
+正常。第一次安裝 Python 套件、下載 Whisper 模型（僅慢速模式需要），或處理較長音訊時都會比較久。快速模式不需下載模型。
 
 ### 前端連不到後端怎麼辦？
 
