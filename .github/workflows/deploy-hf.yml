@@ -1,0 +1,29 @@
+name: Deploy to HF Space
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Push backend/ to HF Space
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          git config --global user.email "ci@github.com"
+          git config --global user.name "GitHub Actions"
+
+          git clone "https://frankkn:${HF_TOKEN}@huggingface.co/spaces/frankkn/podnote-api" hf-space
+
+          cd hf-space
+          git rm -r . --quiet
+          cp -r ../backend/. .
+
+          git add -A
+          git commit -m "Deploy ${{ github.ref_name }} (${{ github.sha }})"
+          git push origin main
