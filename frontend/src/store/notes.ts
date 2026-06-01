@@ -8,6 +8,7 @@ export interface SavedNote {
   title: string;
   url: string;
   markdown: string;
+  transcript?: string; // 原始逐字稿（舊版筆記可能沒有）
   createdAt: number;
 }
 

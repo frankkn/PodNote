@@ -4,18 +4,14 @@ import { Button, StyleSheet, Text, TextInput, View } from "react-native";
 import { GEMINI_KEY_STORAGE, GROQ_KEY_STORAGE } from "@/config";
 import { getItem, setItem } from "@/lib/secureStore";
 
-export default function Settings() {
+export default function SettingsTab() {
   const [gemini, setGemini] = useState("");
   const [groq, setGroq] = useState("");
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
-    getItem(GEMINI_KEY_STORAGE).then((v) => {
-      if (v) setGemini(v);
-    });
-    getItem(GROQ_KEY_STORAGE).then((v) => {
-      if (v) setGroq(v);
-    });
+    getItem(GEMINI_KEY_STORAGE).then((v) => { if (v) setGemini(v); });
+    getItem(GROQ_KEY_STORAGE).then((v) => { if (v) setGroq(v); });
   }, []);
 
   const onSave = async () => {
@@ -37,16 +33,13 @@ export default function Settings() {
         autoCapitalize="none"
         autoCorrect={false}
         value={gemini}
-        onChangeText={(t) => {
-          setGemini(t);
-          setSaved(false);
-        }}
+        onChangeText={(t) => { setGemini(t); setSaved(false); }}
       />
 
       <Text style={[styles.label, styles.gap]}>Groq API Key（快速模式用）</Text>
       <Text style={styles.hint}>
-        用於「快速(推薦)」轉錄。金鑰存在本機；產生筆記時會傳到後端去呼叫 Groq，
-        用完即丟、不會被保存。沒有此金鑰仍可使用「慢速(簡單)」模式。
+        用於「快速（推薦）」轉錄。金鑰存在本機；產生筆記時會傳到後端去呼叫 Groq，
+        用完即丟、不會被保存。沒有此金鑰仍可使用「慢速（簡單）」模式。
         可到 console.groq.com 免費申請。
       </Text>
       <TextInput
@@ -56,10 +49,7 @@ export default function Settings() {
         autoCapitalize="none"
         autoCorrect={false}
         value={groq}
-        onChangeText={(t) => {
-          setGroq(t);
-          setSaved(false);
-        }}
+        onChangeText={(t) => { setGroq(t); setSaved(false); }}
       />
 
       <Button title="儲存" onPress={onSave} />
