@@ -2,6 +2,10 @@ const els = {
   url: document.querySelector("#url"),
   status: document.querySelector("#status"),
   downloadBtn: document.querySelector("#downloadBtn"),
+  saveSettingsBtn: document.querySelector("#saveSettingsBtn"),
+  clearSettingsBtn: document.querySelector("#clearSettingsBtn"),
+  checkDepsBtn: document.querySelector("#checkDepsBtn"),
+  dependencyList: document.querySelector("#dependencyList"),
   showFileBtn: document.querySelector("#showFileBtn"),
   filePath: document.querySelector("#filePath"),
   sourceMeta: document.querySelector("#sourceMeta"),
@@ -18,6 +22,10 @@ const els = {
   generateNoteBtn: document.querySelector("#generateNoteBtn"),
   transcript: document.querySelector("#transcript"),
   note: document.querySelector("#note"),
+  copyTranscriptBtn: document.querySelector("#copyTranscriptBtn"),
+  exportTranscriptBtn: document.querySelector("#exportTranscriptBtn"),
+  copyNoteBtn: document.querySelector("#copyNoteBtn"),
+  exportNoteBtn: document.querySelector("#exportNoteBtn"),
   clearLogBtn: document.querySelector("#clearLogBtn"),
   clearHistoryBtn: document.querySelector("#clearHistoryBtn"),
   history: document.querySelector("#history"),
@@ -35,6 +43,13 @@ function setBusy(isBusy, label) {
   els.downloadModelBtn.disabled = isBusy || !els.localModel.value;
   els.localTranscribeBtn.disabled = isBusy || !els.filePath.value || !els.localModel.value;
   els.generateNoteBtn.disabled = isBusy || !els.transcript.value.trim();
+  els.copyTranscriptBtn.disabled = isBusy || !els.transcript.value.trim();
+  els.exportTranscriptBtn.disabled = isBusy || !els.transcript.value.trim();
+  els.copyNoteBtn.disabled = isBusy || !els.note.value.trim();
+  els.exportNoteBtn.disabled = isBusy || !els.note.value.trim();
+  els.saveSettingsBtn.disabled = isBusy;
+  els.clearSettingsBtn.disabled = isBusy;
+  els.checkDepsBtn.disabled = isBusy;
 }
 
 function appendLog(line) {
@@ -76,14 +91,16 @@ function renderHistory(items) {
   }
 
   for (const item of items) {
-    const row = document.createElement("button");
+    const row = document.createElement("div");
     row.className = "history-item";
-    row.type = "button";
     row.innerHTML = `
-      <span class="history-title">${escapeHtml(item.title || "Untitled")}</span>
-      <span class="history-date">${escapeHtml(new Date(item.createdAt).toLocaleString())}</span>
+      <button class="history-load" type="button">
+        <span class="history-title">${escapeHtml(item.title || "Untitled")}</span>
+        <span class="history-date">${escapeHtml(new Date(item.createdAt).toLocaleString())}${item.note ? " · note" : ""}</span>
+      </button>
+      <button class="history-delete secondary" type="button">Delete</button>
     `;
-    row.addEventListener("click", () => {
+    row.querySelector(".history-load").addEventListener("click", () => {
       els.url.value = item.url || "";
       els.filePath.value = item.audioPath || "";
       els.transcript.value = item.transcript || "";
@@ -99,9 +116,32 @@ function renderHistory(items) {
         webpageUrl: item.url,
         duration: item.duration,
       });
+      setBusy(false, els.status.textContent);
       appendLog(`Loaded history item: ${item.title || item.id}`);
     });
+    row.querySelector(".history-delete").addEventListener("click", async () => {
+      if (!confirm(`Delete "${item.title || "Untitled"}"?`)) return;
+      await window.podnote.deleteHistoryItem(item.id);
+      if (currentHistoryItemId === item.id) currentHistoryItemId = null;
+      await refreshHistory();
+      appendLog(`Deleted history item: ${item.title || item.id}`);
+    });
     els.history.appendChild(row);
+  }
+}
+
+function renderDependencies(checks) {
+  els.dependencyList.innerHTML = "";
+
+  for (const check of checks) {
+    const row = document.createElement("div");
+    row.className = `dependency-item ${check.ok ? "dependency-ok" : "dependency-error"}`;
+    row.innerHTML = `
+      <span>${escapeHtml(check.label)}${check.optional ? " (optional)" : ""}</span>
+      <strong>${check.ok ? "OK" : "Missing"}</strong>
+      <small>${escapeHtml(check.detail || "")}</small>
+    `;
+    els.dependencyList.appendChild(row);
   }
 }
 
@@ -157,9 +197,19 @@ async function refreshLocalModels() {
   renderLocalModels();
 }
 
+async function loadSettings() {
+  const settings = await window.podnote.getSettings();
+  if (settings.remoteApiKey) els.apiKey.value = settings.remoteApiKey;
+  if (settings.remoteBaseUrl) els.baseUrl.value = settings.remoteBaseUrl;
+  if (settings.remoteModel) els.model.value = settings.remoteModel;
+  if (settings.geminiApiKey) els.geminiKey.value = settings.geminiApiKey;
+  if (settings.geminiModel) els.geminiModel.value = settings.geminiModel;
+}
+
 window.podnote.onLog((line) => appendLog(line));
 refreshHistory().catch((error) => appendLog(error instanceof Error ? error.message : String(error)));
 refreshLocalModels().catch((error) => appendLog(error instanceof Error ? error.message : String(error)));
+loadSettings().catch((error) => appendLog(error instanceof Error ? error.message : String(error)));
 
 els.downloadBtn.addEventListener("click", async () => {
   setBusy(true, "Downloading");
@@ -193,9 +243,9 @@ els.transcribeBtn.addEventListener("click", async () => {
     const result = await window.podnote.transcribeAudio({
       filePath: els.filePath.value,
       apiKey: els.apiKey.value,
-        baseUrl: els.baseUrl.value,
-        model: els.model.value,
-        source: currentSource,
+      baseUrl: els.baseUrl.value,
+      model: els.model.value,
+      source: currentSource,
     });
     els.transcript.value = result.transcript;
     els.note.value = "";
@@ -271,6 +321,83 @@ els.generateNoteBtn.addEventListener("click", async () => {
     appendLog(error instanceof Error ? error.message : String(error));
     setBusy(false, "Error");
   }
+});
+
+els.saveSettingsBtn.addEventListener("click", async () => {
+  setBusy(true, "Saving settings");
+  try {
+    await window.podnote.saveSettings({
+      remoteApiKey: els.apiKey.value,
+      remoteBaseUrl: els.baseUrl.value,
+      remoteModel: els.model.value,
+      geminiApiKey: els.geminiKey.value,
+      geminiModel: els.geminiModel.value,
+    });
+    appendLog("Settings saved locally.");
+    setBusy(false, "Saved");
+  } catch (error) {
+    appendLog(error instanceof Error ? error.message : String(error));
+    setBusy(false, "Error");
+  }
+});
+
+els.clearSettingsBtn.addEventListener("click", async () => {
+  if (!confirm("Clear saved API keys and model settings?")) return;
+  setBusy(true, "Clearing settings");
+  try {
+    await window.podnote.clearSettings();
+    els.apiKey.value = "";
+    els.baseUrl.value = "https://api.groq.com/openai/v1";
+    els.model.value = "whisper-large-v3";
+    els.geminiKey.value = "";
+    els.geminiModel.value = "gemini-2.5-flash";
+    appendLog("Settings cleared.");
+    setBusy(false, "Cleared");
+  } catch (error) {
+    appendLog(error instanceof Error ? error.message : String(error));
+    setBusy(false, "Error");
+  }
+});
+
+els.checkDepsBtn.addEventListener("click", async () => {
+  setBusy(true, "Checking dependencies");
+  try {
+    const checks = await window.podnote.checkDependencies();
+    renderDependencies(checks);
+    appendLog("Dependency check completed.");
+    setBusy(false, "Checked");
+  } catch (error) {
+    appendLog(error instanceof Error ? error.message : String(error));
+    setBusy(false, "Error");
+  }
+});
+
+els.copyTranscriptBtn.addEventListener("click", async () => {
+  await window.podnote.copyText(els.transcript.value);
+  appendLog("Transcript copied.");
+});
+
+els.exportTranscriptBtn.addEventListener("click", async () => {
+  const result = await window.podnote.exportText({
+    text: els.transcript.value,
+    title: `${currentSource?.title || "podnote"} transcript`,
+    extension: "txt",
+  });
+  if (!result.canceled) appendLog(`Transcript exported: ${result.filePath}`);
+});
+
+els.copyNoteBtn.addEventListener("click", async () => {
+  await window.podnote.copyText(els.note.value);
+  appendLog("Note copied.");
+});
+
+els.exportNoteBtn.addEventListener("click", async () => {
+  const result = await window.podnote.exportText({
+    text: els.note.value,
+    title: `${currentSource?.title || "podnote"} note`,
+    extension: "md",
+  });
+  if (!result.canceled) appendLog(`Note exported: ${result.filePath}`);
 });
 
 els.showFileBtn.addEventListener("click", () => {

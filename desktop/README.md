@@ -18,6 +18,18 @@ npm start
 
 The app saves successful transcripts to Electron's per-user app data directory as `history.json`.
 
+## Settings And Export
+
+The MVP can save Groq/OpenAI and Gemini keys locally in Electron's app data directory as `settings.json`. This is convenient for development testing, but a packaged release should move secrets to OS secure storage.
+
+The desktop UI can:
+
+- Check current development dependencies (`yt-dlp`, Python, `faster-whisper`, and optional `ffmpeg`)
+- Copy transcript or note text to the clipboard
+- Export transcripts as `.txt`
+- Export generated notes as `.md`
+- Delete individual history items
+
 ## Local Transcription
 
 Local transcription does not require a Groq or OpenAI API key. The app downloads the selected model the first time it is used and stores it in the app data directory.

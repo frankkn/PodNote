@@ -12,11 +12,30 @@
         <div class="header">
           <div>
             <h1>PodNote Desktop MVP</h1>
-            <p>Local YouTube audio download, then Whisper transcription.</p>
+            <p>Local YouTube audio download, transcription, and notes.</p>
           </div>
           <span id="status" class="status">Idle</span>
         </div>
+      </section>
 
+      <section class="panel">
+        <div class="header compact">
+          <div>
+            <h2>Setup</h2>
+            <p>Save local keys and check the tools this MVP currently depends on.</p>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button id="saveSettingsBtn">Save keys</button>
+          <button id="clearSettingsBtn" class="secondary">Clear keys</button>
+          <button id="checkDepsBtn" class="secondary">Check dependencies</button>
+        </div>
+
+        <div id="dependencyList" class="dependency-list"></div>
+      </section>
+
+      <section class="panel">
         <label class="field">
           <span>YouTube URL</span>
           <input id="url" type="url" placeholder="https://www.youtube.com/watch?v=..." />
@@ -60,6 +79,10 @@
           <span>Transcript</span>
           <textarea id="transcript" rows="9" readonly placeholder="Transcript appears here"></textarea>
         </label>
+        <div class="actions">
+          <button id="copyTranscriptBtn" class="secondary" disabled>Copy transcript</button>
+          <button id="exportTranscriptBtn" class="secondary" disabled>Export transcript</button>
+        </div>
       </section>
 
       <section class="panel">
@@ -105,6 +128,10 @@
           <span>Markdown note</span>
           <textarea id="note" rows="10" readonly placeholder="Generated notes appear here"></textarea>
         </label>
+        <div class="actions">
+          <button id="copyNoteBtn" class="secondary" disabled>Copy note</button>
+          <button id="exportNoteBtn" class="secondary" disabled>Export note</button>
+        </div>
       </section>
 
       <section class="panel">

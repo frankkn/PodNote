@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, shell } = require("electron");
+const { app, BrowserWindow, ipcMain, shell, clipboard, dialog } = require("electron");
 const { spawn } = require("node:child_process");
 const crypto = require("node:crypto");
 const fs = require("node:fs");
@@ -8,6 +8,7 @@ const repoRoot = path.resolve(__dirname, "..", "..");
 const defaultDownloadDir = path.join(repoRoot, "_data", "desktop-downloads");
 let historyPath;
 let localModelsDir;
+let settingsPath;
 
 const defaultGeminiModel = "gemini-2.5-flash";
 const noteSystemPrompt = `You are a podcast and YouTube note-taking assistant.
@@ -71,6 +72,7 @@ function createWindow() {
 
 app.whenReady().then(() => {
   historyPath = path.join(app.getPath("userData"), "history.json");
+  settingsPath = path.join(app.getPath("userData"), "settings.json");
   localModelsDir = path.join(app.getPath("userData"), "models");
   createWindow();
 
@@ -103,6 +105,32 @@ function getPythonCommand() {
   if (fs.existsSync(venvPython)) return venvPython;
 
   return process.platform === "win32" ? "py" : "python3";
+}
+
+function runCommand(command, args) {
+  const child = spawn(command, args, {
+    cwd: repoRoot,
+    windowsHide: true,
+  });
+
+  let stdout = "";
+  let stderr = "";
+
+  child.stdout.on("data", (chunk) => {
+    stdout += chunk.toString();
+  });
+  child.stderr.on("data", (chunk) => {
+    stderr += chunk.toString();
+  });
+
+  return new Promise((resolve) => {
+    child.on("error", (error) => {
+      resolve({ ok: false, stdout, stderr, error: error.message });
+    });
+    child.on("close", (code) => {
+      resolve({ ok: code === 0, stdout, stderr, code });
+    });
+  });
 }
 
 function runYtDlp(args, onProgress) {
@@ -214,6 +242,25 @@ async function writeHistory(items) {
   await fs.promises.writeFile(historyPath, JSON.stringify(items, null, 2), "utf8");
 }
 
+async function readSettings() {
+  if (!settingsPath || !fs.existsSync(settingsPath)) {
+    return {};
+  }
+
+  try {
+    const raw = await fs.promises.readFile(settingsPath, "utf8");
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+async function writeSettings(settings) {
+  fs.mkdirSync(path.dirname(settingsPath), { recursive: true });
+  await fs.promises.writeFile(settingsPath, JSON.stringify(settings, null, 2), "utf8");
+}
+
 async function addHistoryItem(item) {
   const items = await readHistory();
   const next = [item, ...items].slice(0, 100);
@@ -236,6 +283,21 @@ async function updateHistoryItem(id, patch) {
   items[index] = updated;
   await writeHistory(items);
   return updated;
+}
+
+async function deleteHistoryItem(id) {
+  const items = await readHistory();
+  const next = items.filter((item) => item.id !== id);
+  await writeHistory(next);
+  return next;
+}
+
+function safeFileStem(value) {
+  return String(value || "podnote")
+    .replace(/[\\/:*?"<>|]+/g, "-")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 80) || "podnote";
 }
 
 async function generateGeminiNote({ transcript, apiKey, model }) {
@@ -457,6 +519,94 @@ ipcMain.handle("notes:generate", async (event, { transcript, apiKey, model, hist
   return { ...patch, historyItem };
 });
 
+ipcMain.handle("settings:get", async () => readSettings());
+
+ipcMain.handle("settings:save", async (_event, { settings }) => {
+  const current = await readSettings();
+  const next = {
+    ...current,
+    remoteApiKey: String(settings?.remoteApiKey || ""),
+    remoteBaseUrl: String(settings?.remoteBaseUrl || "https://api.groq.com/openai/v1"),
+    remoteModel: String(settings?.remoteModel || "whisper-large-v3"),
+    geminiApiKey: String(settings?.geminiApiKey || ""),
+    geminiModel: String(settings?.geminiModel || defaultGeminiModel),
+  };
+  await writeSettings(next);
+  return next;
+});
+
+ipcMain.handle("settings:clear", async () => {
+  await writeSettings({});
+  return {};
+});
+
+ipcMain.handle("dependencies:check", async () => {
+  const yt = getYtDlpCommand();
+  const python = getPythonCommand();
+  const checks = [];
+
+  const ytResult = await runCommand(yt.command, [...yt.argsPrefix, "--version"]);
+  checks.push({
+    id: "yt-dlp",
+    label: "yt-dlp",
+    ok: ytResult.ok,
+    detail: ytResult.ok ? (ytResult.stdout || ytResult.stderr).trim() : ytResult.error || ytResult.stderr.trim(),
+  });
+
+  const pythonResult = await runCommand(python, ["--version"]);
+  checks.push({
+    id: "python",
+    label: "Python",
+    ok: pythonResult.ok,
+    detail: pythonResult.ok ? (pythonResult.stdout || pythonResult.stderr).trim() : pythonResult.error || pythonResult.stderr.trim(),
+  });
+
+  const fasterWhisperResult = await runCommand(python, [
+    "-c",
+    "import faster_whisper; print('faster-whisper ok')",
+  ]);
+  checks.push({
+    id: "faster-whisper",
+    label: "faster-whisper",
+    ok: fasterWhisperResult.ok,
+    detail: fasterWhisperResult.ok
+      ? (fasterWhisperResult.stdout || fasterWhisperResult.stderr).trim()
+      : fasterWhisperResult.error || fasterWhisperResult.stderr.trim(),
+  });
+
+  const ffmpegResult = await runCommand("ffmpeg", ["-version"]);
+  checks.push({
+    id: "ffmpeg",
+    label: "ffmpeg",
+    ok: ffmpegResult.ok,
+    detail: ffmpegResult.ok
+      ? (ffmpegResult.stdout.split(/\r?\n/)[0] || "ffmpeg ok")
+      : ffmpegResult.error || "ffmpeg not found",
+    optional: true,
+  });
+
+  return checks;
+});
+
+ipcMain.handle("clipboard:write", async (_event, { text }) => {
+  clipboard.writeText(String(text || ""));
+  return { ok: true };
+});
+
+ipcMain.handle("export:text", async (_event, { text, title, extension }) => {
+  const ext = String(extension || "txt").replace(/^\./, "");
+  const result = await dialog.showSaveDialog({
+    title: "Export",
+    defaultPath: `${safeFileStem(title)}.${ext}`,
+    filters: [{ name: ext.toUpperCase(), extensions: [ext] }],
+  });
+
+  if (result.canceled || !result.filePath) return { canceled: true };
+
+  await fs.promises.writeFile(result.filePath, String(text || ""), "utf8");
+  return { canceled: false, filePath: result.filePath };
+});
+
 ipcMain.handle("dialog:showFile", async (_event, { filePath }) => {
   if (!filePath) return;
   shell.showItemInFolder(filePath);
@@ -468,3 +618,5 @@ ipcMain.handle("history:clear", async () => {
   await writeHistory([]);
   return [];
 });
+
+ipcMain.handle("history:delete", async (_event, { id }) => deleteHistoryItem(id));
