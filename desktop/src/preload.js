@@ -4,6 +4,8 @@ contextBridge.exposeInMainWorld("podnote", {
   downloadYoutube: (url) => ipcRenderer.invoke("youtube:download", { url }),
   transcribeAudio: (payload) => ipcRenderer.invoke("audio:transcribe", payload),
   showFile: (filePath) => ipcRenderer.invoke("dialog:showFile", { filePath }),
+  listHistory: () => ipcRenderer.invoke("history:list"),
+  clearHistory: () => ipcRenderer.invoke("history:clear"),
   onLog: (callback) => {
     const handler = (_event, line) => callback(line);
     ipcRenderer.on("job:log", handler);

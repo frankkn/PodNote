@@ -1,10 +1,12 @@
 const { app, BrowserWindow, ipcMain, shell } = require("electron");
 const { spawn } = require("node:child_process");
+const crypto = require("node:crypto");
 const fs = require("node:fs");
 const path = require("node:path");
 
 const repoRoot = path.resolve(__dirname, "..", "..");
 const defaultDownloadDir = path.join(repoRoot, "_data", "desktop-downloads");
+let historyPath;
 
 function createWindow() {
   const win = new BrowserWindow({
@@ -21,9 +23,16 @@ function createWindow() {
   });
 
   win.loadFile(path.join(__dirname, "renderer", "index.html"));
+
+  if (process.argv.includes("--smoke-test")) {
+    win.webContents.once("did-finish-load", () => {
+      setTimeout(() => app.quit(), 250);
+    });
+  }
 }
 
 app.whenReady().then(() => {
+  historyPath = path.join(app.getPath("userData"), "history.json");
   createWindow();
 
   app.on("activate", () => {
@@ -81,10 +90,11 @@ function runYtDlp(args, onProgress) {
   });
 }
 
-function newestFile(dir) {
+function newestMatchingFile(dir, id) {
   const files = fs
     .readdirSync(dir, { withFileTypes: true })
     .filter((entry) => entry.isFile())
+    .filter((entry) => !id || entry.name.startsWith(`${id}.`))
     .map((entry) => {
       const filePath = path.join(dir, entry.name);
       const stat = fs.statSync(filePath);
@@ -95,11 +105,59 @@ function newestFile(dir) {
   return files[0]?.filePath;
 }
 
+async function readHistory() {
+  if (!historyPath || !fs.existsSync(historyPath)) return [];
+
+  try {
+    const raw = await fs.promises.readFile(historyPath, "utf8");
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+async function writeHistory(items) {
+  fs.mkdirSync(path.dirname(historyPath), { recursive: true });
+  await fs.promises.writeFile(historyPath, JSON.stringify(items, null, 2), "utf8");
+}
+
+async function addHistoryItem(item) {
+  const items = await readHistory();
+  const next = [item, ...items].slice(0, 100);
+  await writeHistory(next);
+  return next;
+}
+
+function parseMetadata(stdout) {
+  const lines = stdout
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const jsonLine = lines.find((line) => line.startsWith("{") && line.endsWith("}"));
+  if (!jsonLine) throw new Error("Could not read YouTube metadata.");
+
+  const info = JSON.parse(jsonLine);
+  return {
+    id: info.id,
+    title: info.title || "Untitled",
+    duration: Number(info.duration || 0),
+    webpageUrl: info.webpage_url || info.original_url || "",
+  };
+}
+
 ipcMain.handle("youtube:download", async (event, { url }) => {
   const trimmed = String(url || "").trim();
   if (!trimmed) throw new Error("Please paste a YouTube URL.");
 
   fs.mkdirSync(defaultDownloadDir, { recursive: true });
+
+  event.sender.send("job:log", "Reading YouTube metadata...");
+  const metadataResult = await runYtDlp(
+    ["--skip-download", "--no-playlist", "--quiet", "--dump-single-json", trimmed]
+  );
+  const metadata = parseMetadata(metadataResult.stdout);
+  if (!metadata.id) throw new Error("YouTube metadata did not include a video id.");
 
   event.sender.send("job:log", "Starting local YouTube audio download...");
   await runYtDlp(
@@ -108,19 +166,19 @@ ipcMain.handle("youtube:download", async (event, { url }) => {
       "-f",
       "ba[ext=m4a]/ba",
       "-o",
-      path.join(defaultDownloadDir, "%(id)s.%(ext)s"),
+      path.join(defaultDownloadDir, `${metadata.id}.%(ext)s`),
       trimmed,
     ],
     (line) => event.sender.send("job:log", line)
   );
 
-  const filePath = newestFile(defaultDownloadDir);
+  const filePath = newestMatchingFile(defaultDownloadDir, metadata.id);
   if (!filePath) throw new Error("Download finished, but no audio file was found.");
 
-  return { filePath };
+  return { ...metadata, filePath };
 });
 
-ipcMain.handle("audio:transcribe", async (event, { filePath, apiKey, baseUrl, model }) => {
+ipcMain.handle("audio:transcribe", async (event, { filePath, apiKey, baseUrl, model, source }) => {
   const key = String(apiKey || "").trim();
   if (!key) throw new Error("Please enter a Groq or OpenAI API key.");
   if (!filePath || !fs.existsSync(filePath)) throw new Error("Audio file was not found.");
@@ -149,10 +207,31 @@ ipcMain.handle("audio:transcribe", async (event, { filePath, apiKey, baseUrl, mo
   }
 
   const json = await response.json();
-  return { transcript: json.text || "" };
+  const transcript = json.text || "";
+  const historyItem = {
+    id: crypto.randomUUID(),
+    title: source?.title || path.basename(filePath),
+    url: source?.url || source?.webpageUrl || "",
+    audioPath: filePath,
+    transcript,
+    createdAt: new Date().toISOString(),
+    duration: source?.duration || null,
+    model: selectedModel,
+    baseUrl: String(baseUrl || "https://api.groq.com/openai/v1").replace(/\/$/, ""),
+  };
+
+  await addHistoryItem(historyItem);
+  return { transcript, historyItem };
 });
 
 ipcMain.handle("dialog:showFile", async (_event, { filePath }) => {
   if (!filePath) return;
   shell.showItemInFolder(filePath);
+});
+
+ipcMain.handle("history:list", async () => readHistory());
+
+ipcMain.handle("history:clear", async () => {
+  await writeHistory([]);
+  return [];
 });

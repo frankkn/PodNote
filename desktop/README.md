@@ -3,7 +3,7 @@
 Small Electron test app for the desktop YouTube flow:
 
 ```text
-Paste YouTube URL -> download m4a locally -> send audio to Whisper-compatible API
+Paste YouTube URL -> download m4a locally -> send audio to Whisper-compatible API -> save local history
 ```
 
 This MVP intentionally uses the existing backend virtualenv's `yt-dlp` during local development. A packaged desktop release should bundle `yt-dlp`, `ffmpeg`, and a supported JavaScript runtime.
@@ -15,6 +15,8 @@ cd desktop
 npm install
 npm start
 ```
+
+The app saves successful transcripts to Electron's per-user app data directory as `history.json`.
 
 ## CLI Smoke Tests
 
@@ -30,6 +32,13 @@ Transcribe the downloaded file:
 ```powershell
 $env:GROQ_API_KEY="gsk_..."
 npm run test:transcribe
+```
+
+Run the whole download -> transcribe -> test history flow:
+
+```powershell
+$env:GROQ_API_KEY="gsk_..."
+npm run test:workflow
 ```
 
 For OpenAI Whisper:

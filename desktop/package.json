@@ -7,7 +7,9 @@
   "scripts": {
     "start": "electron .",
     "test:download": "node scripts/test-download.js",
-    "test:transcribe": "node scripts/test-transcribe.js"
+    "test:transcribe": "node scripts/test-transcribe.js",
+    "test:workflow": "node scripts/test-workflow.js",
+    "test:electron": "npx --yes electron@42.3.3 . --smoke-test"
   },
   "devDependencies": {
     "electron": "^42.3.3"

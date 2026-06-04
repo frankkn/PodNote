@@ -31,6 +31,8 @@
           <span>Audio file</span>
           <input id="filePath" type="text" readonly placeholder="Downloaded file path appears here" />
         </label>
+
+        <div id="sourceMeta" class="source-meta" hidden></div>
       </section>
 
       <section class="panel">
@@ -65,6 +67,14 @@
           <button id="clearLogBtn" class="secondary">Clear</button>
         </div>
         <pre id="log"></pre>
+      </section>
+
+      <section class="panel">
+        <div class="header compact">
+          <h2>History</h2>
+          <button id="clearHistoryBtn" class="secondary">Clear history</button>
+        </div>
+        <div id="history" class="history-list"></div>
       </section>
     </main>
 

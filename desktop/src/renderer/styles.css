@@ -75,6 +75,16 @@ p {
   font-size: 13px;
 }
 
+.source-meta {
+  border-left: 3px solid #2563eb;
+  padding: 8px 10px;
+  background: #eff6ff;
+  color: #1e3a8a;
+  font-size: 13px;
+  font-weight: 700;
+  border-radius: 4px;
+}
+
 .field {
   display: grid;
   gap: 7px;
@@ -149,6 +159,40 @@ pre {
   font-size: 12px;
   line-height: 1.5;
   white-space: pre-wrap;
+}
+
+.history-list {
+  display: grid;
+  gap: 8px;
+}
+
+.history-item {
+  width: 100%;
+  display: grid;
+  gap: 4px;
+  text-align: left;
+  color: #172033;
+  background: #f8fafc;
+  border: 1px solid #dbe4f0;
+  padding: 11px 12px;
+}
+
+.history-title {
+  font-size: 14px;
+  font-weight: 750;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.history-date,
+.empty {
+  font-size: 12px;
+  color: #64748b;
+}
+
+.empty {
+  margin: 0;
 }
 
 @media (max-width: 760px) {
