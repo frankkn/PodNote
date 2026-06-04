@@ -12,6 +12,8 @@ contextBridge.exposeInMainWorld("podnote", {
   clearSettings: () => ipcRenderer.invoke("settings:clear"),
   checkDependencies: () => ipcRenderer.invoke("dependencies:check"),
   getAppInfo: () => ipcRenderer.invoke("app:info"),
+  ffmpegStatus: () => ipcRenderer.invoke("ffmpeg:status"),
+  installFfmpeg: () => ipcRenderer.invoke("ffmpeg:install"),
   copyText: (text) => ipcRenderer.invoke("clipboard:write", { text }),
   exportText: (payload) => ipcRenderer.invoke("export:text", payload),
   showFile: (filePath) => ipcRenderer.invoke("dialog:showFile", { filePath }),

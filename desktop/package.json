@@ -31,7 +31,7 @@
         "from": "resources/bin",
         "to": "bin",
         "filter": [
-          "**/*"
+          "yt-dlp.exe"
         ]
       }
     ],

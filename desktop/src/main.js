@@ -23,10 +23,76 @@ function getDownloadDir() {
     : path.join(repoRoot, "_data", "desktop-downloads");
 }
 
+function userBinDir() {
+  return path.join(app.getPath("userData"), "bin");
+}
+
+function userFfmpegPath() {
+  return path.join(userBinDir(), "ffmpeg.exe");
+}
+
+// Directory passed to yt-dlp --ffmpeg-location. ffmpeg is fetched on demand
+// into userData/bin (not bundled). Returning null lets yt-dlp fall back to a
+// system ffmpeg on PATH (useful in development).
 function getFfmpegLocation() {
-  if (app.isPackaged) return bundledBinDir();
   if (process.env.FFMPEG_LOCATION) return process.env.FFMPEG_LOCATION;
+  if (fs.existsSync(userFfmpegPath())) return userBinDir();
   return null;
+}
+
+function findFileRecursive(dir, name) {
+  let entries = [];
+  try {
+    entries = fs.readdirSync(dir, { withFileTypes: true });
+  } catch {
+    return null;
+  }
+  for (const entry of entries) {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      const found = findFileRecursive(full, name);
+      if (found) return found;
+    } else if (entry.name.toLowerCase() === name.toLowerCase()) {
+      return full;
+    }
+  }
+  return null;
+}
+
+// Downloads ffmpeg.exe into userData/bin on demand (see fetch-binaries.ps1 for
+// the build-time equivalent). Skips if already present.
+async function installFfmpeg(event) {
+  const log = (line) => event?.sender.send("job:log", line);
+  const dest = userFfmpegPath();
+  if (fs.existsSync(dest)) return { installed: true, path: dest };
+
+  fs.mkdirSync(userBinDir(), { recursive: true });
+  const tmpZip = path.join(app.getPath("temp"), "podnote-ffmpeg.zip");
+  const tmpDir = path.join(app.getPath("temp"), "podnote-ffmpeg");
+
+  log("Downloading ffmpeg (~90 MB)...");
+  const response = await fetch("https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip");
+  if (!response.ok) throw new Error(`ffmpeg download failed (${response.status}).`);
+  const buffer = Buffer.from(await response.arrayBuffer());
+  await fs.promises.writeFile(tmpZip, buffer);
+
+  log("Extracting ffmpeg...");
+  if (fs.existsSync(tmpDir)) fs.rmSync(tmpDir, { recursive: true, force: true });
+  const unzip = await runCommand("powershell", [
+    "-NoProfile",
+    "-Command",
+    `Expand-Archive -Path '${tmpZip}' -DestinationPath '${tmpDir}' -Force`,
+  ]);
+  if (!unzip.ok) throw new Error("Failed to extract ffmpeg archive.");
+
+  const found = findFileRecursive(tmpDir, "ffmpeg.exe");
+  if (!found) throw new Error("ffmpeg.exe not found in downloaded archive.");
+  await fs.promises.copyFile(found, dest);
+
+  fs.rmSync(tmpZip, { force: true });
+  fs.rmSync(tmpDir, { recursive: true, force: true });
+  log("ffmpeg ready.");
+  return { installed: true, path: dest };
 }
 
 if (process.argv.includes("--disable-hardware-acceleration")) {
@@ -447,18 +513,26 @@ ipcMain.handle("youtube:download", async (event, { url }) => {
 
   const ffmpegLocation = getFfmpegLocation();
   event.sender.send("job:log", "Starting local audio download...");
-  await runYtDlp(
-    [
-      "--no-playlist",
-      "-f",
-      "ba[ext=m4a]/ba",
-      ...(ffmpegLocation ? ["--ffmpeg-location", ffmpegLocation] : []),
-      "-o",
-      path.join(downloadDir, `${metadata.id}.%(ext)s`),
-      trimmed,
-    ],
-    (line) => event.sender.send("job:log", line)
-  );
+  try {
+    await runYtDlp(
+      [
+        "--no-playlist",
+        "-f",
+        "ba[ext=m4a]/ba",
+        ...(ffmpegLocation ? ["--ffmpeg-location", ffmpegLocation] : []),
+        "-o",
+        path.join(downloadDir, `${metadata.id}.%(ext)s`),
+        trimmed,
+      ],
+      (line) => event.sender.send("job:log", line)
+    );
+  } catch (error) {
+    const message = String(error?.message || error);
+    if (/ffmpeg/i.test(message) && /(not installed|not found|install|ffprobe)/i.test(message)) {
+      throw new Error("FFMPEG_REQUIRED");
+    }
+    throw error;
+  }
 
   const filePath = newestMatchingFile(downloadDir, metadata.id);
   if (!filePath) throw new Error("Download finished, but no audio file was found.");
@@ -636,7 +710,7 @@ ipcMain.handle("dependencies:check", async () => {
     detail: ytResult.ok ? (ytResult.stdout || ytResult.stderr).trim() : ytResult.error || ytResult.stderr.trim(),
   });
 
-  const ffmpegCommand = app.isPackaged ? path.join(bundledBinDir(), "ffmpeg.exe") : "ffmpeg";
+  const ffmpegCommand = fs.existsSync(userFfmpegPath()) ? userFfmpegPath() : "ffmpeg";
   const ffmpegResult = await runCommand(ffmpegCommand, ["-version"]);
   checks.push({
     id: "ffmpeg",
@@ -644,9 +718,9 @@ ipcMain.handle("dependencies:check", async () => {
     ok: ffmpegResult.ok,
     detail: ffmpegResult.ok
       ? (ffmpegResult.stdout.split(/\r?\n/)[0] || "ffmpeg ok")
-      : ffmpegResult.error || "ffmpeg not found",
-    // Bundled and required in packaged builds; optional system tool in dev.
-    optional: !app.isPackaged,
+      : "未安裝。多數連結不需要；需要時點「下載 ffmpeg」即可。",
+    // Fetched on demand, so never a hard requirement.
+    optional: true,
   });
 
   // Local transcription (Python + faster-whisper) only ships in development builds.
@@ -683,6 +757,13 @@ ipcMain.handle("app:info", async () => ({
   localTranscription: localTranscriptionAvailable,
   version: app.getVersion(),
 }));
+
+ipcMain.handle("ffmpeg:status", async () => ({
+  installed: fs.existsSync(userFfmpegPath()),
+  path: userFfmpegPath(),
+}));
+
+ipcMain.handle("ffmpeg:install", async (event) => installFfmpeg(event));
 
 ipcMain.handle("clipboard:write", async (_event, { text }) => {
   clipboard.writeText(String(text || ""));

@@ -12,6 +12,7 @@ const els = {
   viewHistory: document.querySelector("#view-history"),
   // setup
   checkDepsBtn: document.querySelector("#checkDepsBtn"),
+  installFfmpegBtn: document.querySelector("#installFfmpegBtn"),
   dependencyList: document.querySelector("#dependencyList"),
   provGroqBtn: document.querySelector("#provGroqBtn"),
   provOpenaiBtn: document.querySelector("#provOpenaiBtn"),
@@ -258,6 +259,22 @@ function setBusy(isBusy, label, state) {
   els.saveSettingsBtn.disabled = isBusy;
   els.clearSettingsBtn.disabled = isBusy;
   els.checkDepsBtn.disabled = isBusy;
+  els.installFfmpegBtn.disabled = isBusy;
+}
+
+async function ensureFfmpeg() {
+  setBusy(true, "下載 ffmpeg 中");
+  appendLog("開始下載 ffmpeg…");
+  try {
+    await window.podnote.installFfmpeg();
+    setBusy(false, "ffmpeg 就緒", "ok");
+    appendLog("ffmpeg 已就緒。");
+    return true;
+  } catch (error) {
+    logError(error);
+    setBusy(false, "錯誤", "error");
+    return false;
+  }
 }
 
 /* ===================== Source ===================== */
@@ -614,6 +631,18 @@ async function downloadFromUrl(url) {
     setBusy(false, "已下載", "ok");
     appendLog(`已下載：${result.title} -> ${result.filePath}`);
   } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (message.includes("FFMPEG_REQUIRED")) {
+      setBusy(false, "需要 ffmpeg", "error");
+      appendLog("這個連結需要 ffmpeg 才能下載。");
+      if (confirm("這個連結需要 ffmpeg 才能下載，是否現在下載 ffmpeg？（約 90 MB，只需一次）")) {
+        if (await ensureFfmpeg()) {
+          appendLog("重試下載…");
+          await downloadFromUrl(url);
+        }
+      }
+      return;
+    }
     logError(error);
     setBusy(false, "錯誤", "error");
   }
@@ -792,6 +821,16 @@ els.checkDepsBtn.addEventListener("click", async () => {
   } catch (error) {
     logError(error);
     setBusy(false, "錯誤", "error");
+  }
+});
+
+els.installFfmpegBtn.addEventListener("click", async () => {
+  if (await ensureFfmpeg()) {
+    try {
+      renderDependencies(await window.podnote.checkDependencies());
+    } catch (error) {
+      logError(error);
+    }
   }
 });
 
