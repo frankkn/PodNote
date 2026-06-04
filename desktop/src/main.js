@@ -7,6 +7,34 @@ const path = require("node:path");
 const repoRoot = path.resolve(__dirname, "..", "..");
 const defaultDownloadDir = path.join(repoRoot, "_data", "desktop-downloads");
 let historyPath;
+let localModelsDir;
+
+const localModelOptions = [
+  {
+    id: "tiny",
+    label: "tiny",
+    size: "~75 MB",
+    description: "Fastest and smallest; rougher accuracy.",
+  },
+  {
+    id: "base",
+    label: "base",
+    size: "~145 MB",
+    description: "Small download with better accuracy than tiny.",
+  },
+  {
+    id: "small",
+    label: "small",
+    size: "~466 MB",
+    description: "Balanced local transcription choice.",
+  },
+  {
+    id: "large-v3",
+    label: "large",
+    size: "~3.1 GB",
+    description: "Best accuracy, slowest and largest download.",
+  },
+];
 
 function createWindow() {
   const win = new BrowserWindow({
@@ -33,6 +61,7 @@ function createWindow() {
 
 app.whenReady().then(() => {
   historyPath = path.join(app.getPath("userData"), "history.json");
+  localModelsDir = path.join(app.getPath("userData"), "models");
   createWindow();
 
   app.on("activate", () => {
@@ -55,6 +84,15 @@ function getYtDlpCommand() {
   }
 
   return { command: "yt-dlp", argsPrefix: [] };
+}
+
+function getPythonCommand() {
+  if (process.env.PODNOTE_PYTHON) return process.env.PODNOTE_PYTHON;
+
+  const venvPython = path.join(repoRoot, "backend", ".venv", "Scripts", "python.exe");
+  if (fs.existsSync(venvPython)) return venvPython;
+
+  return process.platform === "win32" ? "py" : "python3";
 }
 
 function runYtDlp(args, onProgress) {
@@ -88,6 +126,50 @@ function runYtDlp(args, onProgress) {
       else reject(new Error((stderr || stdout || `yt-dlp exited with ${code}`).trim()));
     });
   });
+}
+
+function runLocalWhisper(args, onProgress) {
+  const command = getPythonCommand();
+  const script = path.join(repoRoot, "desktop", "scripts", "local-whisper.py");
+  const child = spawn(command, [script, ...args], {
+    cwd: repoRoot,
+    windowsHide: true,
+  });
+
+  let stdout = "";
+  let stderr = "";
+
+  const handleOutput = (chunk, isError) => {
+    const text = chunk.toString();
+    if (isError) stderr += text;
+    else stdout += text;
+
+    for (const line of text.split(/\r?\n/)) {
+      if (!line.trim()) continue;
+      onProgress?.(line);
+    }
+  };
+
+  child.stdout.on("data", (chunk) => handleOutput(chunk, false));
+  child.stderr.on("data", (chunk) => handleOutput(chunk, true));
+
+  return new Promise((resolve, reject) => {
+    child.on("error", reject);
+    child.on("close", (code) => {
+      if (code === 0) resolve({ stdout, stderr });
+      else reject(new Error((stderr || stdout || `local whisper exited with ${code}`).trim()));
+    });
+  });
+}
+
+function parseLastJson(stdout) {
+  const lines = stdout
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const jsonLine = lines.reverse().find((line) => line.startsWith("{") && line.endsWith("}"));
+  if (!jsonLine) throw new Error("Local Whisper did not return JSON output.");
+  return JSON.parse(jsonLine);
 }
 
 function newestMatchingFile(dir, id) {
@@ -222,6 +304,74 @@ ipcMain.handle("audio:transcribe", async (event, { filePath, apiKey, baseUrl, mo
 
   await addHistoryItem(historyItem);
   return { transcript, historyItem };
+});
+
+ipcMain.handle("local:model-options", async () =>
+  localModelOptions.map((option) => ({
+    ...option,
+    downloaded: fs.existsSync(path.join(localModelsDir, `models--Systran--faster-whisper-${option.id}`)),
+  }))
+);
+
+ipcMain.handle("local:download-model", async (event, { model }) => {
+  const selectedModel = String(model || "tiny");
+  if (!localModelOptions.some((option) => option.id === selectedModel)) {
+    throw new Error(`Unsupported local model: ${selectedModel}`);
+  }
+
+  event.sender.send("job:log", `Preparing local model: ${selectedModel}`);
+  const result = await runLocalWhisper(
+    [
+      "--download-only",
+      "--model",
+      selectedModel,
+      "--models-dir",
+      localModelsDir,
+    ],
+    (line) => event.sender.send("job:log", line)
+  );
+
+  return parseLastJson(result.stdout);
+});
+
+ipcMain.handle("local:transcribe", async (event, { filePath, model, source }) => {
+  if (!filePath || !fs.existsSync(filePath)) throw new Error("Audio file was not found.");
+
+  const selectedModel = String(model || "tiny");
+  if (!localModelOptions.some((option) => option.id === selectedModel)) {
+    throw new Error(`Unsupported local model: ${selectedModel}`);
+  }
+
+  event.sender.send("job:log", `Starting local transcription with ${selectedModel}`);
+  const result = await runLocalWhisper(
+    [
+      "--model",
+      selectedModel,
+      "--models-dir",
+      localModelsDir,
+      "--audio",
+      filePath,
+    ],
+    (line) => event.sender.send("job:log", line)
+  );
+  const parsed = parseLastJson(result.stdout);
+  const transcript = parsed.transcript || "";
+
+  const historyItem = {
+    id: crypto.randomUUID(),
+    title: source?.title || path.basename(filePath),
+    url: source?.url || source?.webpageUrl || "",
+    audioPath: filePath,
+    transcript,
+    createdAt: new Date().toISOString(),
+    duration: source?.duration || null,
+    model: selectedModel,
+    baseUrl: "local",
+    transcriptionMode: "local",
+  };
+
+  await addHistoryItem(historyItem);
+  return { transcript, historyItem, language: parsed.language || null };
 });
 
 ipcMain.handle("dialog:showFile", async (_event, { filePath }) => {

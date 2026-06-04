@@ -18,6 +18,19 @@ npm start
 
 The app saves successful transcripts to Electron's per-user app data directory as `history.json`.
 
+## Local Transcription
+
+Local transcription does not require a Groq or OpenAI API key. The app downloads the selected model the first time it is used and stores it in the app data directory.
+
+Available local models:
+
+| Model | Approx. size | Notes |
+|---|---:|---|
+| tiny | ~75 MB | Fastest and smallest; rougher accuracy |
+| base | ~145 MB | Small download with better accuracy than tiny |
+| small | ~466 MB | Balanced local transcription choice |
+| large | ~3.1 GB | Best accuracy, slowest and largest download |
+
 ## CLI Smoke Tests
 
 Download a short YouTube test video as m4a:
@@ -39,6 +52,12 @@ Run the whole download -> transcribe -> test history flow:
 ```powershell
 $env:GROQ_API_KEY="gsk_..."
 npm run test:workflow
+```
+
+Run local transcription with the tiny model:
+
+```powershell
+npm run test:local
 ```
 
 For OpenAI Whisper:

@@ -95,11 +95,13 @@ p {
 
 input,
 textarea,
+select,
 button {
   font: inherit;
 }
 
 input,
+select,
 textarea {
   width: 100%;
   border: 1px solid #cbd5e1;
@@ -113,6 +115,36 @@ textarea {
 textarea {
   resize: vertical;
   line-height: 1.5;
+}
+
+.local-model-row {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.7fr) 1fr;
+  gap: 12px;
+  align-items: end;
+}
+
+.model-info {
+  min-height: 65px;
+  border: 1px solid #dbe4f0;
+  border-radius: 6px;
+  padding: 10px 12px;
+  background: #f8fafc;
+  display: grid;
+  grid-template-columns: auto auto auto;
+  gap: 4px 10px;
+  align-items: center;
+  color: #334155;
+  font-size: 13px;
+}
+
+.model-info strong {
+  color: #172033;
+}
+
+.model-info small {
+  grid-column: 1 / -1;
+  color: #64748b;
 }
 
 .actions {
@@ -197,6 +229,10 @@ pre {
 
 @media (max-width: 760px) {
   .grid {
+    grid-template-columns: 1fr;
+  }
+
+  .local-model-row {
     grid-template-columns: 1fr;
   }
 

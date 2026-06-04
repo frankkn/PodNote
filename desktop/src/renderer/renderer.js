@@ -9,6 +9,10 @@ const els = {
   baseUrl: document.querySelector("#baseUrl"),
   model: document.querySelector("#model"),
   transcribeBtn: document.querySelector("#transcribeBtn"),
+  localModel: document.querySelector("#localModel"),
+  localModelInfo: document.querySelector("#localModelInfo"),
+  downloadModelBtn: document.querySelector("#downloadModelBtn"),
+  localTranscribeBtn: document.querySelector("#localTranscribeBtn"),
   transcript: document.querySelector("#transcript"),
   clearLogBtn: document.querySelector("#clearLogBtn"),
   clearHistoryBtn: document.querySelector("#clearHistoryBtn"),
@@ -17,11 +21,14 @@ const els = {
 };
 
 let currentSource = null;
+let localModels = [];
 
 function setBusy(isBusy, label) {
   els.status.textContent = label || (isBusy ? "Working" : "Idle");
   els.downloadBtn.disabled = isBusy;
   els.transcribeBtn.disabled = isBusy || !els.filePath.value;
+  els.downloadModelBtn.disabled = isBusy || !els.localModel.value;
+  els.localTranscribeBtn.disabled = isBusy || !els.filePath.value || !els.localModel.value;
 }
 
 function appendLog(line) {
@@ -97,13 +104,52 @@ function escapeHtml(value) {
     .replaceAll("'", "&#039;");
 }
 
+function renderLocalModels() {
+  els.localModel.innerHTML = "";
+
+  for (const option of localModels) {
+    const item = document.createElement("option");
+    item.value = option.id;
+    item.textContent = `${option.label} (${option.size})`;
+    els.localModel.appendChild(item);
+  }
+
+  if (!els.localModel.value && localModels[0]) {
+    els.localModel.value = localModels[0].id;
+  }
+
+  renderSelectedLocalModel();
+}
+
+function renderSelectedLocalModel() {
+  const selected = localModels.find((option) => option.id === els.localModel.value);
+  if (!selected) {
+    els.localModelInfo.textContent = "";
+    return;
+  }
+
+  els.localModelInfo.innerHTML = `
+    <strong>${escapeHtml(selected.label)}</strong>
+    <span>${escapeHtml(selected.size)}</span>
+    <span>${escapeHtml(selected.downloaded ? "Downloaded" : "Not downloaded yet")}</span>
+    <small>${escapeHtml(selected.description)}</small>
+  `;
+  setBusy(false, els.status.textContent);
+}
+
 async function refreshHistory() {
   const items = await window.podnote.listHistory();
   renderHistory(items);
 }
 
+async function refreshLocalModels() {
+  localModels = await window.podnote.listLocalModels();
+  renderLocalModels();
+}
+
 window.podnote.onLog((line) => appendLog(line));
 refreshHistory().catch((error) => appendLog(error instanceof Error ? error.message : String(error)));
+refreshLocalModels().catch((error) => appendLog(error instanceof Error ? error.message : String(error)));
 
 els.downloadBtn.addEventListener("click", async () => {
   setBusy(true, "Downloading");
@@ -117,6 +163,7 @@ els.downloadBtn.addEventListener("click", async () => {
     renderSourceMeta({ ...result, url: els.url.value });
     els.showFileBtn.disabled = false;
     els.transcribeBtn.disabled = false;
+    els.localTranscribeBtn.disabled = false;
     appendLog(`Downloaded: ${result.title} -> ${result.filePath}`);
     setBusy(false, "Downloaded");
   } catch (error) {
@@ -148,6 +195,45 @@ els.transcribeBtn.addEventListener("click", async () => {
   }
 });
 
+els.downloadModelBtn.addEventListener("click", async () => {
+  setBusy(true, "Downloading model");
+  const model = els.localModel.value;
+  appendLog(`Local model download requested: ${model}`);
+
+  try {
+    await window.podnote.downloadLocalModel(model);
+    await refreshLocalModels();
+    appendLog(`Local model ready: ${model}`);
+    setBusy(false, "Model ready");
+  } catch (error) {
+    appendLog(error instanceof Error ? error.message : String(error));
+    setBusy(false, "Error");
+  }
+});
+
+els.localTranscribeBtn.addEventListener("click", async () => {
+  setBusy(true, "Local transcribing");
+  els.transcript.value = "";
+  const model = els.localModel.value;
+  appendLog(`Local transcription requested: ${model}`);
+
+  try {
+    const result = await window.podnote.transcribeLocal({
+      filePath: els.filePath.value,
+      model,
+      source: currentSource,
+    });
+    els.transcript.value = result.transcript;
+    await refreshLocalModels();
+    await refreshHistory();
+    appendLog("Local transcription completed and saved to history.");
+    setBusy(false, "Done");
+  } catch (error) {
+    appendLog(error instanceof Error ? error.message : String(error));
+    setBusy(false, "Error");
+  }
+});
+
 els.showFileBtn.addEventListener("click", () => {
   if (els.filePath.value) window.podnote.showFile(els.filePath.value);
 });
@@ -162,3 +248,5 @@ els.clearHistoryBtn.addEventListener("click", async () => {
   await refreshHistory();
   appendLog("History cleared.");
 });
+
+els.localModel.addEventListener("change", renderSelectedLocalModel);

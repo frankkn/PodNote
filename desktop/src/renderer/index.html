@@ -36,6 +36,7 @@
       </section>
 
       <section class="panel">
+        <h2>Remote transcription</h2>
         <div class="grid">
           <label class="field">
             <span>Whisper API key</span>
@@ -52,13 +53,35 @@
         </div>
 
         <div class="actions">
-          <button id="transcribeBtn" disabled>Transcribe</button>
+          <button id="transcribeBtn" disabled>Transcribe with API</button>
         </div>
 
         <label class="field">
           <span>Transcript</span>
           <textarea id="transcript" rows="9" readonly placeholder="Transcript appears here"></textarea>
         </label>
+      </section>
+
+      <section class="panel">
+        <div class="header compact">
+          <div>
+            <h2>Local transcription</h2>
+            <p>Download a model on first use, then transcribe without an API key.</p>
+          </div>
+        </div>
+
+        <div class="local-model-row">
+          <label class="field">
+            <span>Local model</span>
+            <select id="localModel"></select>
+          </label>
+          <div id="localModelInfo" class="model-info"></div>
+        </div>
+
+        <div class="actions">
+          <button id="downloadModelBtn">Download model</button>
+          <button id="localTranscribeBtn" disabled>Transcribe locally</button>
+        </div>
       </section>
 
       <section class="panel">
