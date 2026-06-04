@@ -102,7 +102,7 @@ function createWindow() {
     win.webContents.once("did-finish-load", () => {
       setTimeout(async () => {
         const text = await win.webContents.executeJavaScript("document.body.innerText");
-        if (!text.includes("PodNote Desktop MVP")) {
+        if (!text.includes("PodNote")) {
           console.error("Smoke test failed: renderer body did not contain expected text.");
           app.exit(1);
           return;
@@ -579,14 +579,16 @@ ipcMain.handle("settings:get", async () => readSettings());
 
 ipcMain.handle("settings:save", async (_event, { settings }) => {
   const current = await readSettings();
+  const incoming = settings && typeof settings === "object" ? settings : {};
   const next = {
     ...current,
-    remoteApiKey: String(settings?.remoteApiKey || ""),
-    remoteBaseUrl: String(settings?.remoteBaseUrl || "https://api.groq.com/openai/v1"),
-    remoteModel: String(settings?.remoteModel || "whisper-large-v3"),
-    geminiApiKey: String(settings?.geminiApiKey || ""),
-    geminiModel: String(settings?.geminiModel || defaultGeminiModel),
+    ...incoming,
+    geminiModel: String(incoming.geminiModel || current.geminiModel || defaultGeminiModel),
   };
+  // Drop superseded legacy remote fields so the file stays clean.
+  delete next.remoteApiKey;
+  delete next.remoteBaseUrl;
+  delete next.remoteModel;
   await writeSettings(next);
   return next;
 });
@@ -666,6 +668,25 @@ ipcMain.handle("export:text", async (_event, { text, title, extension }) => {
 ipcMain.handle("dialog:showFile", async (_event, { filePath }) => {
   if (!filePath) return;
   shell.showItemInFolder(filePath);
+});
+
+ipcMain.handle("dialog:openAudio", async () => {
+  const result = await dialog.showOpenDialog({
+    title: "選擇音檔",
+    properties: ["openFile"],
+    filters: [
+      {
+        name: "Audio",
+        extensions: ["m4a", "mp3", "wav", "aac", "ogg", "oga", "opus", "flac", "webm", "mp4", "mov", "mkv"],
+      },
+      { name: "All Files", extensions: ["*"] },
+    ],
+  });
+
+  if (result.canceled || !result.filePaths?.[0]) return { canceled: true };
+
+  const filePath = result.filePaths[0];
+  return { canceled: false, filePath, title: path.basename(filePath) };
 });
 
 ipcMain.handle("history:list", async () => readHistory());

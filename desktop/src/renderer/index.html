@@ -1,164 +1,271 @@
 <!doctype html>
-<html lang="en">
+<html lang="zh-Hant">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>PodNote Desktop MVP</title>
+    <title>PodNote Desktop</title>
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
-    <main class="shell">
-      <section class="panel">
-        <div class="header">
-          <div>
-            <h1>PodNote Desktop MVP</h1>
-            <p>Local YouTube audio download, transcription, and notes.</p>
-          </div>
-          <span id="status" class="status">Idle</span>
-        </div>
-      </section>
-
-      <section class="panel">
-        <div class="header compact">
-          <div>
-            <h2>Setup</h2>
-            <p>Save local keys and check the tools this MVP currently depends on.</p>
+    <div class="app">
+      <!-- ===== Sidebar ===== -->
+      <aside class="sidebar">
+        <div class="brand">
+          <span class="brand-mark">▦</span>
+          <div class="brand-text">
+            <strong>PodNote</strong>
+            <small>Desktop</small>
           </div>
         </div>
 
-        <div class="actions">
-          <button id="saveSettingsBtn">Save keys</button>
-          <button id="clearSettingsBtn" class="secondary">Clear keys</button>
-          <button id="checkDepsBtn" class="secondary">Check dependencies</button>
-        </div>
+        <nav class="nav">
+          <button class="nav-item active" data-view="setup" type="button">
+            <span class="nav-icon">⚙</span><span>前置設定</span>
+          </button>
+          <button class="nav-item" data-view="generate" type="button">
+            <span class="nav-icon">✍</span><span>生成筆記</span>
+          </button>
+          <button class="nav-item" data-view="history" type="button">
+            <span class="nav-icon">🕘</span><span>筆記歷史</span>
+          </button>
+        </nav>
 
-        <div id="dependencyList" class="dependency-list"></div>
-      </section>
-
-      <section class="panel">
-        <label class="field">
-          <span>YouTube URL</span>
-          <input id="url" type="url" placeholder="https://www.youtube.com/watch?v=..." />
-        </label>
-
-        <div class="actions">
-          <button id="downloadBtn">Download m4a</button>
-          <button id="showFileBtn" disabled>Show file</button>
-        </div>
-
-        <label class="field">
-          <span>Audio file</span>
-          <input id="filePath" type="text" readonly placeholder="Downloaded file path appears here" />
-        </label>
-
-        <div id="sourceMeta" class="source-meta" hidden></div>
-      </section>
-
-      <section class="panel">
-        <div class="header compact">
-          <div>
-            <h2>Transcription</h2>
-            <p>Choose either a remote API or a local model for the current audio.</p>
+        <div class="sidebar-foot">
+          <div class="status-row">
+            <span id="statusDot" class="status-dot"></span>
+            <span id="status">Idle</span>
           </div>
+          <button id="logToggle" class="log-toggle" type="button">▸ Log</button>
+          <pre id="log" class="log" hidden></pre>
         </div>
+      </aside>
 
-        <div class="mode-toggle" role="group" aria-label="Transcription mode">
-          <button id="remoteModeBtn" type="button">Remote API</button>
-          <button id="localModeBtn" class="secondary" type="button">Local model</button>
-        </div>
+      <!-- ===== Content ===== -->
+      <main class="content">
+        <!-- ===== View: Setup ===== -->
+        <section class="view" id="view-setup">
+          <header class="view-head">
+            <h1>前置設定</h1>
+            <p>檢查相依工具，並設定轉錄與筆記所需的 API 金鑰。</p>
+          </header>
 
-        <div id="remoteSettings" class="mode-settings">
-          <div class="grid">
-            <label class="field">
-              <span>Whisper API key</span>
-              <input id="apiKey" type="password" placeholder="Groq gsk_... or OpenAI sk_..." />
+          <div class="card">
+            <div class="card-head">
+              <h2>相依性檢查</h2>
+              <button id="checkDepsBtn" class="secondary" type="button">檢查相依性</button>
+            </div>
+            <div id="dependencyList" class="dependency-list">
+              <p class="empty">尚未檢查。點「檢查相依性」確認 yt-dlp、Python、faster-whisper、ffmpeg。</p>
+            </div>
+          </div>
+
+          <div class="card">
+            <h2>轉錄 API</h2>
+
+            <div class="seg" role="group" aria-label="轉錄服務商">
+              <button id="provGroqBtn" type="button">Groq</button>
+              <button id="provOpenaiBtn" class="secondary" type="button">OpenAI Whisper</button>
+            </div>
+
+            <div class="grid api-grid">
+              <label class="field">
+                <span>API key</span>
+                <input id="apiKey" type="password" placeholder="gsk_..." />
+              </label>
+              <label class="field">
+                <span>Model</span>
+                <select id="model"></select>
+              </label>
+            </div>
+
+            <label class="field" id="modelCustomField" hidden>
+              <span>自訂 Model 名稱</span>
+              <input id="modelCustom" type="text" placeholder="輸入模型名稱，例如 whisper-large-v3" />
             </label>
-            <label class="field">
-              <span>Base URL</span>
-              <input id="baseUrl" type="url" value="https://api.groq.com/openai/v1" />
-            </label>
-            <label class="field">
-              <span>Model</span>
-              <input id="model" type="text" value="whisper-large-v3" />
-            </label>
+
+            <div class="advanced">
+              <button id="advToggle" class="link" type="button">▸ 進階（Base URL）</button>
+              <div id="advBody" hidden>
+                <label class="field">
+                  <span>Base URL</span>
+                  <input id="baseUrl" type="url" />
+                </label>
+                <p class="muted">依服務商自動帶入。自架或相容端點才需要修改。</p>
+              </div>
+            </div>
           </div>
-        </div>
 
-        <div id="localSettings" class="mode-settings" hidden>
-          <div class="local-model-row">
-            <label class="field">
-              <span>Local model</span>
-              <select id="localModel"></select>
-            </label>
-            <div id="localModelInfo" class="model-info"></div>
+          <div class="card">
+            <h2>筆記生成（Gemini）</h2>
+            <div class="grid notes-grid">
+              <label class="field">
+                <span>Gemini API key</span>
+                <input id="geminiKey" type="password" placeholder="AIza..." />
+              </label>
+              <label class="field">
+                <span>Gemini model</span>
+                <input id="geminiModel" type="text" value="gemini-2.5-flash" />
+              </label>
+            </div>
           </div>
-        </div>
 
-        <div class="actions">
-          <button id="downloadModelBtn">Download model</button>
-          <button id="transcribeBtn" disabled>Transcribe</button>
-        </div>
-      </section>
+          <div class="actions">
+            <button id="saveSettingsBtn" type="button">儲存設定</button>
+            <button id="clearSettingsBtn" class="secondary" type="button">清除設定</button>
+          </div>
+        </section>
 
-      <section class="panel">
-        <div class="header compact">
-          <h2>Current transcript</h2>
-          <span id="transcriptBadge" class="badge">No transcript</span>
-        </div>
+        <!-- ===== View: Generate ===== -->
+        <section class="view" id="view-generate" hidden>
+          <header class="view-head">
+            <h1>生成筆記</h1>
+            <p>上傳音檔或貼上 YouTube 連結，轉錄後再生成筆記。</p>
+          </header>
 
-        <label class="field">
-          <span>Transcript</span>
-          <textarea id="transcript" rows="9" readonly placeholder="Transcript appears here"></textarea>
-        </label>
-        <div class="actions">
-          <button id="copyTranscriptBtn" class="secondary" disabled>Copy transcript</button>
-          <button id="exportTranscriptBtn" class="secondary" disabled>Export transcript</button>
-        </div>
-      </section>
+          <div id="settingsHint" class="hint" hidden>
+            <span id="settingsHintText">尚未設定 API 金鑰。</span>
+            <button id="goSetupBtn" class="link" type="button">前往前置設定 →</button>
+          </div>
 
-      <section class="panel">
-        <h2>Notes</h2>
-        <div class="grid notes-grid">
-          <label class="field">
-            <span>Gemini API key</span>
-            <input id="geminiKey" type="password" placeholder="AIza..." />
-          </label>
-          <label class="field">
-            <span>Gemini model</span>
-            <input id="geminiModel" type="text" value="gemini-2.5-flash" />
-          </label>
-        </div>
+          <!-- Step 1: source -->
+          <div class="card">
+            <div class="card-head"><h2>1. 音訊來源</h2></div>
 
-        <div class="actions">
-          <button id="generateNoteBtn" disabled>Generate notes</button>
-        </div>
+            <div class="seg" role="group" aria-label="音訊來源">
+              <button id="srcYoutubeBtn" type="button">YouTube 連結</button>
+              <button id="srcUploadBtn" class="secondary" type="button">上傳音檔</button>
+            </div>
 
-        <label class="field">
-          <span>Markdown note</span>
-          <textarea id="note" rows="10" readonly placeholder="Generated notes appear here"></textarea>
-        </label>
-        <div class="actions">
-          <button id="copyNoteBtn" class="secondary" disabled>Copy note</button>
-          <button id="exportNoteBtn" class="secondary" disabled>Export note</button>
-        </div>
-      </section>
+            <div id="youtubeSource" class="source-pane">
+              <label class="field">
+                <span>YouTube URL</span>
+                <input id="url" type="url" placeholder="https://www.youtube.com/watch?v=..." />
+              </label>
+              <div class="actions">
+                <button id="downloadBtn" type="button">下載音訊</button>
+              </div>
+            </div>
 
-      <section class="panel">
-        <div class="header compact">
-          <h2>Log</h2>
-          <button id="clearLogBtn" class="secondary">Clear</button>
-        </div>
-        <pre id="log"></pre>
-      </section>
+            <div id="uploadSource" class="source-pane" hidden>
+              <div class="actions">
+                <button id="pickFileBtn" type="button">選擇音檔…</button>
+              </div>
+              <p class="muted">支援 m4a / mp3 / wav / flac / webm 等常見格式。</p>
+            </div>
 
-      <section class="panel">
-        <div class="header compact">
-          <h2>History</h2>
-          <button id="clearHistoryBtn" class="secondary">Clear history</button>
-        </div>
-        <div id="history" class="history-list"></div>
-      </section>
-    </main>
+            <div class="filerow">
+              <label class="field grow">
+                <span>音檔</span>
+                <input id="filePath" type="text" readonly placeholder="來源檔案路徑會顯示在這裡" />
+              </label>
+              <button id="showFileBtn" class="secondary" type="button" disabled>開啟位置</button>
+            </div>
+            <div id="sourceMeta" class="source-meta" hidden></div>
+          </div>
+
+          <!-- Step 2: transcription -->
+          <div class="card">
+            <div class="card-head">
+              <h2>2. 轉錄</h2>
+              <span id="transcriptBadge" class="badge">尚無逐字稿</span>
+            </div>
+
+            <div class="seg" role="group" aria-label="轉錄模式">
+              <button id="remoteModeBtn" type="button">Remote API</button>
+              <button id="localModeBtn" class="secondary" type="button">Local model</button>
+            </div>
+
+            <div id="remoteSettings" class="mode-settings">
+              <p class="muted">
+                使用前置設定的 API 金鑰，模型：<strong id="remoteModelLabel">whisper-large-v3</strong>
+              </p>
+            </div>
+
+            <div id="localSettings" class="mode-settings" hidden>
+              <div class="local-model-row">
+                <label class="field">
+                  <span>本地模型</span>
+                  <select id="localModel"></select>
+                </label>
+                <div id="localModelInfo" class="model-info"></div>
+              </div>
+              <div class="actions">
+                <button id="downloadModelBtn" class="secondary" type="button">下載模型</button>
+              </div>
+            </div>
+
+            <div class="actions">
+              <button id="transcribeBtn" type="button" disabled>開始轉錄</button>
+            </div>
+
+            <label class="field">
+              <span>逐字稿</span>
+              <textarea id="transcript" rows="10" readonly placeholder="逐字稿會顯示在這裡"></textarea>
+            </label>
+            <div class="actions">
+              <button id="copyTranscriptBtn" class="secondary" type="button" disabled>複製逐字稿</button>
+              <button id="exportTranscriptBtn" class="secondary" type="button" disabled>匯出 .txt</button>
+            </div>
+          </div>
+
+          <!-- Step 3: notes -->
+          <div class="card">
+            <div class="card-head"><h2>3. 生成筆記</h2></div>
+            <div class="actions">
+              <button id="generateNoteBtn" type="button" disabled>用 Gemini 生成筆記</button>
+              <button id="copyNoteBtn" class="secondary" type="button" disabled>複製 Markdown</button>
+              <button id="exportNoteBtn" class="secondary" type="button" disabled>匯出 .md</button>
+            </div>
+            <div id="notePreview" class="note-preview empty">筆記會以排版預覽顯示在這裡。</div>
+          </div>
+        </section>
+
+        <!-- ===== View: History ===== -->
+        <section class="view" id="view-history" hidden>
+          <header class="view-head">
+            <h1>筆記歷史</h1>
+            <p>過往的逐字稿與筆記。</p>
+          </header>
+
+          <div id="historyListView">
+            <div class="history-toolbar">
+              <input id="historySearch" type="search" placeholder="搜尋標題或內容…" />
+              <button id="clearHistoryBtn" class="secondary" type="button">清空</button>
+            </div>
+            <div id="history" class="history-list"></div>
+          </div>
+
+          <div id="historyDetailView" hidden>
+            <button id="historyBackBtn" class="link" type="button">← 返回清單</button>
+            <div class="detail-head">
+              <h2 id="detailTitle"></h2>
+              <div id="detailMeta" class="muted"></div>
+            </div>
+
+            <div class="card">
+              <div class="card-head">
+                <h3>逐字稿</h3>
+                <button id="detailCopyTranscript" class="secondary" type="button">複製</button>
+              </div>
+              <textarea id="detailTranscript" rows="8" readonly></textarea>
+            </div>
+
+            <div class="card">
+              <div class="card-head">
+                <h3>筆記</h3>
+                <button id="detailCopyNote" class="secondary" type="button">複製 Markdown</button>
+              </div>
+              <div id="detailNote" class="note-preview"></div>
+            </div>
+
+            <div class="actions">
+              <button id="detailLoadToGenerate" class="secondary" type="button">在生成頁開啟</button>
+              <button id="detailDelete" class="danger" type="button">刪除這筆</button>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
 
     <script src="./renderer.js"></script>
   </body>

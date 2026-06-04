@@ -14,6 +14,7 @@ contextBridge.exposeInMainWorld("podnote", {
   copyText: (text) => ipcRenderer.invoke("clipboard:write", { text }),
   exportText: (payload) => ipcRenderer.invoke("export:text", payload),
   showFile: (filePath) => ipcRenderer.invoke("dialog:showFile", { filePath }),
+  pickAudioFile: () => ipcRenderer.invoke("dialog:openAudio"),
   listHistory: () => ipcRenderer.invoke("history:list"),
   clearHistory: () => ipcRenderer.invoke("history:clear"),
   deleteHistoryItem: (id) => ipcRenderer.invoke("history:delete", { id }),
