@@ -9,6 +9,16 @@ const defaultDownloadDir = path.join(repoRoot, "_data", "desktop-downloads");
 let historyPath;
 let localModelsDir;
 
+const defaultGeminiModel = "gemini-2.5-flash";
+const noteSystemPrompt = `You are a podcast and YouTube note-taking assistant.
+Create structured Traditional Chinese notes from the transcript.
+Ignore ads, sponsorship reads, filler, and irrelevant chatter when possible.
+Output Markdown only with:
+# 主題
+## 重點摘要
+## 章節整理
+## 值得記住的金句`;
+
 const localModelOptions = [
   {
     id: "tiny",
@@ -211,6 +221,58 @@ async function addHistoryItem(item) {
   return next;
 }
 
+async function updateHistoryItem(id, patch) {
+  if (!id) return null;
+
+  const items = await readHistory();
+  const index = items.findIndex((item) => item.id === id);
+  if (index === -1) return null;
+
+  const updated = {
+    ...items[index],
+    ...patch,
+    updatedAt: new Date().toISOString(),
+  };
+  items[index] = updated;
+  await writeHistory(items);
+  return updated;
+}
+
+async function generateGeminiNote({ transcript, apiKey, model }) {
+  const key = String(apiKey || "").trim();
+  if (!key) throw new Error("Please enter a Gemini API key.");
+
+  const selectedModel = String(model || defaultGeminiModel).trim();
+  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(
+    selectedModel
+  )}:generateContent?key=${encodeURIComponent(key)}`;
+
+  const response = await fetch(endpoint, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      systemInstruction: { parts: [{ text: noteSystemPrompt }] },
+      contents: [{ role: "user", parts: [{ text: transcript }] }],
+    }),
+  });
+
+  if (!response.ok) {
+    const detail = await response.text();
+    if (response.status === 429) {
+      throw new Error(`Gemini quota or rate limit reached (429): ${detail}`);
+    }
+    if (response.status === 400 || response.status === 403) {
+      throw new Error(`Gemini API key or request error (${response.status}): ${detail}`);
+    }
+    throw new Error(`Gemini failed (${response.status}): ${detail}`);
+  }
+
+  const data = await response.json();
+  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!text) throw new Error("Gemini did not return note text.");
+  return { note: text, model: selectedModel };
+}
+
 function parseMetadata(stdout) {
   const lines = stdout
     .split(/\r?\n/)
@@ -300,6 +362,7 @@ ipcMain.handle("audio:transcribe", async (event, { filePath, apiKey, baseUrl, mo
     duration: source?.duration || null,
     model: selectedModel,
     baseUrl: String(baseUrl || "https://api.groq.com/openai/v1").replace(/\/$/, ""),
+    transcriptionMode: "remote",
   };
 
   await addHistoryItem(historyItem);
@@ -372,6 +435,26 @@ ipcMain.handle("local:transcribe", async (event, { filePath, model, source }) =>
 
   await addHistoryItem(historyItem);
   return { transcript, historyItem, language: parsed.language || null };
+});
+
+ipcMain.handle("notes:generate", async (event, { transcript, apiKey, model, historyItemId }) => {
+  const cleanTranscript = String(transcript || "").trim();
+  if (!cleanTranscript) throw new Error("Transcript is empty.");
+
+  event.sender.send("job:log", "Generating notes with Gemini...");
+  const result = await generateGeminiNote({
+    transcript: cleanTranscript,
+    apiKey,
+    model,
+  });
+
+  const patch = {
+    note: result.note,
+    noteModel: result.model,
+    noteCreatedAt: new Date().toISOString(),
+  };
+  const historyItem = historyItemId ? await updateHistoryItem(historyItemId, patch) : null;
+  return { ...patch, historyItem };
 });
 
 ipcMain.handle("dialog:showFile", async (_event, { filePath }) => {

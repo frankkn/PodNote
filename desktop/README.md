@@ -60,6 +60,13 @@ Run local transcription with the tiny model:
 npm run test:local
 ```
 
+Generate notes with Gemini:
+
+```powershell
+$env:GEMINI_API_KEY="AIza..."
+npm run test:notes
+```
+
 For OpenAI Whisper:
 
 ```powershell

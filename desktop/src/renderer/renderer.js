@@ -13,7 +13,11 @@ const els = {
   localModelInfo: document.querySelector("#localModelInfo"),
   downloadModelBtn: document.querySelector("#downloadModelBtn"),
   localTranscribeBtn: document.querySelector("#localTranscribeBtn"),
+  geminiKey: document.querySelector("#geminiKey"),
+  geminiModel: document.querySelector("#geminiModel"),
+  generateNoteBtn: document.querySelector("#generateNoteBtn"),
   transcript: document.querySelector("#transcript"),
+  note: document.querySelector("#note"),
   clearLogBtn: document.querySelector("#clearLogBtn"),
   clearHistoryBtn: document.querySelector("#clearHistoryBtn"),
   history: document.querySelector("#history"),
@@ -21,6 +25,7 @@ const els = {
 };
 
 let currentSource = null;
+let currentHistoryItemId = null;
 let localModels = [];
 
 function setBusy(isBusy, label) {
@@ -29,6 +34,7 @@ function setBusy(isBusy, label) {
   els.transcribeBtn.disabled = isBusy || !els.filePath.value;
   els.downloadModelBtn.disabled = isBusy || !els.localModel.value;
   els.localTranscribeBtn.disabled = isBusy || !els.filePath.value || !els.localModel.value;
+  els.generateNoteBtn.disabled = isBusy || !els.transcript.value.trim();
 }
 
 function appendLog(line) {
@@ -81,8 +87,12 @@ function renderHistory(items) {
       els.url.value = item.url || "";
       els.filePath.value = item.audioPath || "";
       els.transcript.value = item.transcript || "";
+      els.note.value = item.note || "";
+      currentHistoryItemId = item.id || null;
       els.showFileBtn.disabled = !item.audioPath;
       els.transcribeBtn.disabled = !item.audioPath;
+      els.localTranscribeBtn.disabled = !item.audioPath;
+      els.generateNoteBtn.disabled = !item.transcript;
       renderSourceMeta({
         title: item.title,
         url: item.url,
@@ -154,6 +164,8 @@ refreshLocalModels().catch((error) => appendLog(error instanceof Error ? error.m
 els.downloadBtn.addEventListener("click", async () => {
   setBusy(true, "Downloading");
   els.transcript.value = "";
+  els.note.value = "";
+  currentHistoryItemId = null;
   renderSourceMeta(null);
   appendLog("Download requested.");
 
@@ -184,8 +196,10 @@ els.transcribeBtn.addEventListener("click", async () => {
         baseUrl: els.baseUrl.value,
         model: els.model.value,
         source: currentSource,
-      });
+    });
     els.transcript.value = result.transcript;
+    els.note.value = "";
+    currentHistoryItemId = result.historyItem?.id || null;
     await refreshHistory();
     appendLog("Transcription completed and saved to history.");
     setBusy(false, "Done");
@@ -224,9 +238,34 @@ els.localTranscribeBtn.addEventListener("click", async () => {
       source: currentSource,
     });
     els.transcript.value = result.transcript;
+    els.note.value = "";
+    currentHistoryItemId = result.historyItem?.id || null;
     await refreshLocalModels();
     await refreshHistory();
     appendLog("Local transcription completed and saved to history.");
+    setBusy(false, "Done");
+  } catch (error) {
+    appendLog(error instanceof Error ? error.message : String(error));
+    setBusy(false, "Error");
+  }
+});
+
+els.generateNoteBtn.addEventListener("click", async () => {
+  setBusy(true, "Generating notes");
+  els.note.value = "";
+  appendLog("Gemini note generation requested.");
+
+  try {
+    const result = await window.podnote.generateNotes({
+      transcript: els.transcript.value,
+      apiKey: els.geminiKey.value,
+      model: els.geminiModel.value,
+      historyItemId: currentHistoryItemId,
+    });
+    els.note.value = result.note;
+    if (result.historyItem?.id) currentHistoryItemId = result.historyItem.id;
+    await refreshHistory();
+    appendLog("Notes generated and saved to history.");
     setBusy(false, "Done");
   } catch (error) {
     appendLog(error instanceof Error ? error.message : String(error));

@@ -85,6 +85,29 @@
       </section>
 
       <section class="panel">
+        <h2>Notes</h2>
+        <div class="grid notes-grid">
+          <label class="field">
+            <span>Gemini API key</span>
+            <input id="geminiKey" type="password" placeholder="AIza..." />
+          </label>
+          <label class="field">
+            <span>Gemini model</span>
+            <input id="geminiModel" type="text" value="gemini-2.5-flash" />
+          </label>
+        </div>
+
+        <div class="actions">
+          <button id="generateNoteBtn" disabled>Generate notes</button>
+        </div>
+
+        <label class="field">
+          <span>Markdown note</span>
+          <textarea id="note" rows="10" readonly placeholder="Generated notes appear here"></textarea>
+        </label>
+      </section>
+
+      <section class="panel">
         <div class="header compact">
           <h2>Log</h2>
           <button id="clearLogBtn" class="secondary">Clear</button>

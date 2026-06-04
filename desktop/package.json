@@ -10,6 +10,7 @@
     "test:transcribe": "node scripts/test-transcribe.js",
     "test:workflow": "node scripts/test-workflow.js",
     "test:local": "node scripts/test-local.js",
+    "test:notes": "node scripts/test-notes.js",
     "test:electron": "npx --yes electron@42.3.3 . --smoke-test"
   },
   "devDependencies": {
