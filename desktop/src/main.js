@@ -10,6 +10,16 @@ let historyPath;
 let localModelsDir;
 let settingsPath;
 
+if (process.argv.includes("--disable-hardware-acceleration")) {
+  app.disableHardwareAcceleration();
+}
+if (!app.isPackaged) {
+  app.setPath("userData", path.join(repoRoot, "_data", "desktop-electron-user-data"));
+  app.commandLine.appendSwitch("no-sandbox");
+  app.commandLine.appendSwitch("disk-cache-size", "0");
+  app.commandLine.appendSwitch("disable-gpu-shader-disk-cache");
+}
+
 const defaultGeminiModel = "gemini-2.5-flash";
 const noteSystemPrompt = `You are a podcast and YouTube note-taking assistant.
 Create structured Traditional Chinese notes from the transcript.
@@ -53,6 +63,8 @@ function createWindow() {
     height: 720,
     minWidth: 760,
     minHeight: 560,
+    show: false,
+    backgroundColor: "#f5f7fb",
     title: "PodNote Desktop MVP",
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
@@ -61,11 +73,55 @@ function createWindow() {
     },
   });
 
+  win.webContents.on("did-fail-load", (_event, errorCode, errorDescription) => {
+    console.error(`Renderer failed to load (${errorCode}): ${errorDescription}`);
+  });
+
+  win.webContents.on("render-process-gone", (_event, details) => {
+    console.error(`Renderer process gone: ${details.reason}`);
+  });
+
+  win.once("ready-to-show", () => {
+    win.show();
+    win.focus();
+  });
+
   win.loadFile(path.join(__dirname, "renderer", "index.html"));
+
+  win.webContents.once("did-finish-load", () => {
+    win.show();
+    win.focus();
+    win.webContents.invalidate();
+
+    if (process.argv.includes("--devtools")) {
+      win.webContents.openDevTools({ mode: "detach" });
+    }
+  });
 
   if (process.argv.includes("--smoke-test")) {
     win.webContents.once("did-finish-load", () => {
-      setTimeout(() => app.quit(), 250);
+      setTimeout(async () => {
+        const text = await win.webContents.executeJavaScript("document.body.innerText");
+        if (!text.includes("PodNote Desktop MVP")) {
+          console.error("Smoke test failed: renderer body did not contain expected text.");
+          app.exit(1);
+          return;
+        }
+        app.quit();
+      }, 250);
+    });
+  }
+
+  if (process.argv.includes("--capture-render")) {
+    win.webContents.once("did-finish-load", () => {
+      setTimeout(async () => {
+        const image = await win.webContents.capturePage();
+        const outPath = path.join(repoRoot, "_data", "desktop-render-capture.png");
+        fs.mkdirSync(path.dirname(outPath), { recursive: true });
+        await fs.promises.writeFile(outPath, image.toPNG());
+        console.log(`Wrote renderer capture: ${outPath}`);
+        app.quit();
+      }, 1000);
     });
   }
 }
