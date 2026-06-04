@@ -14,6 +14,13 @@ contextBridge.exposeInMainWorld("podnote", {
   getAppInfo: () => ipcRenderer.invoke("app:info"),
   ffmpegStatus: () => ipcRenderer.invoke("ffmpeg:status"),
   installFfmpeg: () => ipcRenderer.invoke("ffmpeg:install"),
+  checkForUpdates: () => ipcRenderer.invoke("update:check"),
+  installUpdate: () => ipcRenderer.invoke("update:install"),
+  onUpdateStatus: (callback) => {
+    const handler = (_event, payload) => callback(payload);
+    ipcRenderer.on("update:status", handler);
+    return () => ipcRenderer.removeListener("update:status", handler);
+  },
   copyText: (text) => ipcRenderer.invoke("clipboard:write", { text }),
   exportText: (payload) => ipcRenderer.invoke("export:text", payload),
   showFile: (filePath) => ipcRenderer.invoke("dialog:showFile", { filePath }),

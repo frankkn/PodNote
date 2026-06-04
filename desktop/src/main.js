@@ -1,4 +1,5 @@
 const { app, BrowserWindow, ipcMain, shell, clipboard, dialog } = require("electron");
+const { autoUpdater } = require("electron-updater");
 const { spawn } = require("node:child_process");
 const crypto = require("node:crypto");
 const fs = require("node:fs");
@@ -142,6 +143,31 @@ const localModelOptions = [
   },
 ];
 
+function setupAutoUpdates(win) {
+  // electron-updater only works in packaged builds (reads GitHub Releases).
+  if (!app.isPackaged) return;
+
+  const send = (status, data = {}) => {
+    if (win && !win.isDestroyed()) {
+      win.webContents.send("update:status", { status, ...data });
+    }
+  };
+
+  autoUpdater.autoDownload = true;
+  autoUpdater.autoInstallOnAppQuit = true;
+
+  autoUpdater.on("checking-for-update", () => send("checking"));
+  autoUpdater.on("update-available", (info) => send("available", { version: info?.version }));
+  autoUpdater.on("update-not-available", () => send("none"));
+  autoUpdater.on("download-progress", (progress) =>
+    send("downloading", { percent: Math.round(progress?.percent || 0) })
+  );
+  autoUpdater.on("update-downloaded", (info) => send("downloaded", { version: info?.version }));
+  autoUpdater.on("error", (error) => send("error", { message: String(error?.message || error) }));
+
+  autoUpdater.checkForUpdates().catch((error) => send("error", { message: String(error?.message || error) }));
+}
+
 function createWindow() {
   const win = new BrowserWindow({
     width: 980,
@@ -180,6 +206,10 @@ function createWindow() {
 
     if (process.argv.includes("--devtools")) {
       win.webContents.openDevTools({ mode: "detach" });
+    }
+
+    if (!process.argv.includes("--smoke-test") && !process.argv.includes("--capture-render")) {
+      setupAutoUpdates(win);
     }
   });
 
@@ -757,6 +787,23 @@ ipcMain.handle("app:info", async () => ({
   localTranscription: localTranscriptionAvailable,
   version: app.getVersion(),
 }));
+
+ipcMain.handle("update:check", async () => {
+  if (!app.isPackaged) return { ok: false, reason: "dev" };
+  try {
+    await autoUpdater.checkForUpdates();
+    return { ok: true };
+  } catch (error) {
+    return { ok: false, reason: String(error?.message || error) };
+  }
+});
+
+ipcMain.handle("update:install", async () => {
+  if (!app.isPackaged) return { ok: false, reason: "dev" };
+  // Let the IPC reply flush before the app restarts.
+  setImmediate(() => autoUpdater.quitAndInstall());
+  return { ok: true };
+});
 
 ipcMain.handle("ffmpeg:status", async () => ({
   installed: fs.existsSync(userFfmpegPath()),

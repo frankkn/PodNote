@@ -14,7 +14,8 @@
     "test:notes": "node scripts/test-notes.js",
     "test:electron": "npx --yes electron@42.3.3 . --smoke-test",
     "fetch:bin": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/fetch-binaries.ps1",
-    "dist": "npm run fetch:bin && electron-builder --win nsis"
+    "dist": "npm run fetch:bin && electron-builder --win nsis",
+    "release": "npm run fetch:bin && electron-builder --win nsis --publish always"
   },
   "build": {
     "appId": "com.podnote.desktop",
@@ -44,7 +45,17 @@
       "oneClick": false,
       "perMachine": false,
       "allowToChangeInstallationDirectory": true
-    }
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "frankkn",
+        "repo": "PodNote"
+      }
+    ]
+  },
+  "dependencies": {
+    "electron-updater": "^6.3.9"
   },
   "devDependencies": {
     "electron": "^42.3.3",

@@ -6,6 +6,8 @@ const els = {
   logToggle: document.querySelector("#logToggle"),
   log: document.querySelector("#log"),
   appVersion: document.querySelector("#appVersion"),
+  updateBtn: document.querySelector("#updateBtn"),
+  updateStatus: document.querySelector("#updateStatus"),
   // views
   viewSetup: document.querySelector("#view-setup"),
   viewGenerate: document.querySelector("#view-generate"),
@@ -969,6 +971,44 @@ els.logToggle.addEventListener("click", () => {
 
 /* ===================== Init ===================== */
 
+function setUpdateStatus(text) {
+  if (text) {
+    els.updateStatus.textContent = text;
+    els.updateStatus.hidden = false;
+  } else {
+    els.updateStatus.hidden = true;
+    els.updateStatus.textContent = "";
+  }
+}
+
+function handleUpdateStatus(payload) {
+  if (!payload) return;
+  switch (payload.status) {
+    case "checking":
+      setUpdateStatus("檢查更新中…");
+      break;
+    case "available":
+      setUpdateStatus(`發現新版 v${payload.version}，下載中…`);
+      break;
+    case "downloading":
+      setUpdateStatus(`下載更新中… ${payload.percent || 0}%`);
+      break;
+    case "downloaded":
+      setUpdateStatus(`更新 v${payload.version} 已就緒`);
+      els.updateBtn.hidden = false;
+      break;
+    case "none":
+      setUpdateStatus("");
+      break;
+    case "error":
+      setUpdateStatus("");
+      appendLog(`更新檢查失敗：${payload.message || ""}`);
+      break;
+    default:
+      break;
+  }
+}
+
 function applyCapabilities(info) {
   if (info && info.version) {
     els.appVersion.textContent = `v${info.version}`;
@@ -982,6 +1022,8 @@ function applyCapabilities(info) {
   }
 }
 
+els.updateBtn.addEventListener("click", () => window.podnote.installUpdate());
+window.podnote.onUpdateStatus(handleUpdateStatus);
 window.podnote.onLog((line) => appendLog(line));
 setSourceType("youtube");
 setTranscriptionMode("remote");
