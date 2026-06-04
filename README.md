@@ -1,6 +1,21 @@
 # PodNote
 
-把 Podcast 音訊轉成逐字稿，再用 Gemini 整理成筆記的 Web App。
+把 Podcast / YouTube 內容轉成逐字稿，再用 Gemini 整理成結構化筆記。
+
+## 兩種版本（Web / 桌面）
+
+PodNote 提供 **Web 版** 與 **桌面版**，功能與金鑰需求不同：
+
+| | Web 版 | 桌面版 |
+|---|---|---|
+| **平台** | Web + Android | Windows 桌面 |
+| **音訊來源** | Podcast | YouTube / Podcast / 上傳音檔 |
+| **轉錄** | 後端 faster-whisper 代勞（伺服器跑）<br>或外接 Groq（較快） | 雲端 Whisper API（Groq / OpenAI）|
+| **筆記** | Gemini | Gemini |
+| **金鑰需求** | Gemini（必填）<br>Groq（選填，用快速轉錄時） | Groq 或 OpenAI（必填）<br>＋ Gemini（必填）|
+| **安裝** | 免安裝，直接開線上版 → https://frankkn-podnote-api.hf.space | 下載 [installer.exe](https://github.com/frankkn/PodNote/releases) 安裝（Windows）|
+
+> 以下文件為 **Web 版** 的使用與設定說明。
 
 ## 立即打開 Web App
 
