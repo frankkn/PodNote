@@ -119,7 +119,7 @@
         <section class="view" id="view-generate" hidden>
           <header class="view-head">
             <h1>生成筆記</h1>
-            <p>上傳音檔或貼上 YouTube 連結，轉錄後再生成筆記。</p>
+            <p>上傳音檔，或貼上 YouTube / Podcast 連結，轉錄後再生成筆記。</p>
           </header>
 
           <div id="settingsHint" class="hint" hidden>
@@ -133,6 +133,7 @@
 
             <div class="seg" role="group" aria-label="音訊來源">
               <button id="srcYoutubeBtn" type="button">YouTube 連結</button>
+              <button id="srcPodcastBtn" class="secondary" type="button">Podcast 連結</button>
               <button id="srcUploadBtn" class="secondary" type="button">上傳音檔</button>
             </div>
 
@@ -144,6 +145,17 @@
               <div class="actions">
                 <button id="downloadBtn" type="button">下載音訊</button>
               </div>
+            </div>
+
+            <div id="podcastSource" class="source-pane" hidden>
+              <label class="field">
+                <span>Podcast 連結</span>
+                <input id="podcastUrl" type="url" placeholder="單集頁面或 .mp3 直接連結" />
+              </label>
+              <div class="actions">
+                <button id="podcastDownloadBtn" type="button">下載音訊</button>
+              </div>
+              <p class="muted">支援 Apple Podcasts 單集頁面與直接音檔連結；Spotify 因 DRM 無法下載。</p>
             </div>
 
             <div id="uploadSource" class="source-pane" hidden>

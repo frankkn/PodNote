@@ -30,11 +30,15 @@ const els = {
   settingsHintText: document.querySelector("#settingsHintText"),
   goSetupBtn: document.querySelector("#goSetupBtn"),
   srcYoutubeBtn: document.querySelector("#srcYoutubeBtn"),
+  srcPodcastBtn: document.querySelector("#srcPodcastBtn"),
   srcUploadBtn: document.querySelector("#srcUploadBtn"),
   youtubeSource: document.querySelector("#youtubeSource"),
+  podcastSource: document.querySelector("#podcastSource"),
   uploadSource: document.querySelector("#uploadSource"),
   url: document.querySelector("#url"),
   downloadBtn: document.querySelector("#downloadBtn"),
+  podcastUrl: document.querySelector("#podcastUrl"),
+  podcastDownloadBtn: document.querySelector("#podcastDownloadBtn"),
   pickFileBtn: document.querySelector("#pickFileBtn"),
   filePath: document.querySelector("#filePath"),
   showFileBtn: document.querySelector("#showFileBtn"),
@@ -259,8 +263,10 @@ function setBusy(isBusy, label, state) {
 function setSourceType(type) {
   sourceType = type;
   els.youtubeSource.hidden = type !== "youtube";
+  els.podcastSource.hidden = type !== "podcast";
   els.uploadSource.hidden = type !== "upload";
   els.srcYoutubeBtn.classList.toggle("secondary", type !== "youtube");
+  els.srcPodcastBtn.classList.toggle("secondary", type !== "podcast");
   els.srcUploadBtn.classList.toggle("secondary", type !== "upload");
 }
 
@@ -327,8 +333,8 @@ function resolveRemote() {
 
 function updateSettingsHint() {
   const missing = [];
-  if (!settings.geminiApiKey) missing.push("Gemini");
-  if (transcriptionMode === "remote" && !resolveRemote().apiKey) missing.push("轉錄 API");
+  if (!settings.geminiApiKey) missing.push("Gemini(必填)");
+  if (transcriptionMode === "remote" && !resolveRemote().apiKey) missing.push("轉錄 API (選填)");
 
   if (missing.length) {
     els.settingsHintText.textContent = `尚未設定金鑰：${missing.join("、")}。`;
@@ -591,7 +597,7 @@ function loadItemIntoGenerate(item) {
 
 /* ===================== Actions ===================== */
 
-els.downloadBtn.addEventListener("click", async () => {
+async function downloadFromUrl(url) {
   setBusy(true, "下載中");
   resetOutputs();
   currentHistoryItemId = null;
@@ -599,9 +605,9 @@ els.downloadBtn.addEventListener("click", async () => {
   appendLog("已要求下載。");
 
   try {
-    const result = await window.podnote.downloadYoutube(els.url.value);
+    const result = await window.podnote.downloadYoutube(url);
     els.filePath.value = result.filePath;
-    renderSourceMeta({ ...result, url: els.url.value });
+    renderSourceMeta({ ...result, url });
     els.showFileBtn.disabled = false;
     setBusy(false, "已下載", "ok");
     appendLog(`已下載：${result.title} -> ${result.filePath}`);
@@ -609,7 +615,10 @@ els.downloadBtn.addEventListener("click", async () => {
     logError(error);
     setBusy(false, "錯誤", "error");
   }
-});
+}
+
+els.downloadBtn.addEventListener("click", () => downloadFromUrl(els.url.value));
+els.podcastDownloadBtn.addEventListener("click", () => downloadFromUrl(els.podcastUrl.value));
 
 els.pickFileBtn.addEventListener("click", async () => {
   try {
@@ -864,6 +873,7 @@ els.navItems.forEach((item) => {
 
 els.goSetupBtn.addEventListener("click", () => setView("setup"));
 els.srcYoutubeBtn.addEventListener("click", () => setSourceType("youtube"));
+els.srcPodcastBtn.addEventListener("click", () => setSourceType("podcast"));
 els.srcUploadBtn.addEventListener("click", () => setSourceType("upload"));
 els.remoteModeBtn.addEventListener("click", () => {
   setTranscriptionMode("remote");

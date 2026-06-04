@@ -410,18 +410,18 @@ function parseMetadata(stdout) {
 
 ipcMain.handle("youtube:download", async (event, { url }) => {
   const trimmed = String(url || "").trim();
-  if (!trimmed) throw new Error("Please paste a YouTube URL.");
+  if (!trimmed) throw new Error("Please paste a URL.");
 
   fs.mkdirSync(defaultDownloadDir, { recursive: true });
 
-  event.sender.send("job:log", "Reading YouTube metadata...");
+  event.sender.send("job:log", "Reading media metadata...");
   const metadataResult = await runYtDlp(
     ["--skip-download", "--no-playlist", "--quiet", "--dump-single-json", trimmed]
   );
   const metadata = parseMetadata(metadataResult.stdout);
-  if (!metadata.id) throw new Error("YouTube metadata did not include a video id.");
+  if (!metadata.id) throw new Error("Metadata did not include a media id.");
 
-  event.sender.send("job:log", "Starting local YouTube audio download...");
+  event.sender.send("job:log", "Starting local audio download...");
   await runYtDlp(
     [
       "--no-playlist",
