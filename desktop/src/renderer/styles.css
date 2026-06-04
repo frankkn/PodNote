@@ -85,6 +85,17 @@ p {
   border-radius: 4px;
 }
 
+.badge {
+  min-width: 112px;
+  text-align: center;
+  border: 1px solid #b9c7d9;
+  border-radius: 999px;
+  padding: 6px 10px;
+  color: #334155;
+  background: #f8fafc;
+  font-size: 13px;
+}
+
 .field {
   display: grid;
   gap: 7px;
@@ -122,6 +133,21 @@ textarea {
   grid-template-columns: minmax(220px, 0.7fr) 1fr;
   gap: 12px;
   align-items: end;
+}
+
+.mode-toggle {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.mode-settings {
+  display: grid;
+  gap: 12px;
+}
+
+.mode-settings[hidden] {
+  display: none;
 }
 
 .model-info {

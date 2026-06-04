@@ -55,24 +55,55 @@
       </section>
 
       <section class="panel">
-        <h2>Remote transcription</h2>
-        <div class="grid">
-          <label class="field">
-            <span>Whisper API key</span>
-            <input id="apiKey" type="password" placeholder="Groq gsk_... or OpenAI sk_..." />
-          </label>
-          <label class="field">
-            <span>Base URL</span>
-            <input id="baseUrl" type="url" value="https://api.groq.com/openai/v1" />
-          </label>
-          <label class="field">
-            <span>Model</span>
-            <input id="model" type="text" value="whisper-large-v3" />
-          </label>
+        <div class="header compact">
+          <div>
+            <h2>Transcription</h2>
+            <p>Choose either a remote API or a local model for the current audio.</p>
+          </div>
+        </div>
+
+        <div class="mode-toggle" role="group" aria-label="Transcription mode">
+          <button id="remoteModeBtn" type="button">Remote API</button>
+          <button id="localModeBtn" class="secondary" type="button">Local model</button>
+        </div>
+
+        <div id="remoteSettings" class="mode-settings">
+          <div class="grid">
+            <label class="field">
+              <span>Whisper API key</span>
+              <input id="apiKey" type="password" placeholder="Groq gsk_... or OpenAI sk_..." />
+            </label>
+            <label class="field">
+              <span>Base URL</span>
+              <input id="baseUrl" type="url" value="https://api.groq.com/openai/v1" />
+            </label>
+            <label class="field">
+              <span>Model</span>
+              <input id="model" type="text" value="whisper-large-v3" />
+            </label>
+          </div>
+        </div>
+
+        <div id="localSettings" class="mode-settings" hidden>
+          <div class="local-model-row">
+            <label class="field">
+              <span>Local model</span>
+              <select id="localModel"></select>
+            </label>
+            <div id="localModelInfo" class="model-info"></div>
+          </div>
         </div>
 
         <div class="actions">
-          <button id="transcribeBtn" disabled>Transcribe with API</button>
+          <button id="downloadModelBtn">Download model</button>
+          <button id="transcribeBtn" disabled>Transcribe</button>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="header compact">
+          <h2>Current transcript</h2>
+          <span id="transcriptBadge" class="badge">No transcript</span>
         </div>
 
         <label class="field">
@@ -82,28 +113,6 @@
         <div class="actions">
           <button id="copyTranscriptBtn" class="secondary" disabled>Copy transcript</button>
           <button id="exportTranscriptBtn" class="secondary" disabled>Export transcript</button>
-        </div>
-      </section>
-
-      <section class="panel">
-        <div class="header compact">
-          <div>
-            <h2>Local transcription</h2>
-            <p>Download a model on first use, then transcribe without an API key.</p>
-          </div>
-        </div>
-
-        <div class="local-model-row">
-          <label class="field">
-            <span>Local model</span>
-            <select id="localModel"></select>
-          </label>
-          <div id="localModelInfo" class="model-info"></div>
-        </div>
-
-        <div class="actions">
-          <button id="downloadModelBtn">Download model</button>
-          <button id="localTranscribeBtn" disabled>Transcribe locally</button>
         </div>
       </section>
 

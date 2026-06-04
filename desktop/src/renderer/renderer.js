@@ -9,6 +9,10 @@ const els = {
   showFileBtn: document.querySelector("#showFileBtn"),
   filePath: document.querySelector("#filePath"),
   sourceMeta: document.querySelector("#sourceMeta"),
+  remoteModeBtn: document.querySelector("#remoteModeBtn"),
+  localModeBtn: document.querySelector("#localModeBtn"),
+  remoteSettings: document.querySelector("#remoteSettings"),
+  localSettings: document.querySelector("#localSettings"),
   apiKey: document.querySelector("#apiKey"),
   baseUrl: document.querySelector("#baseUrl"),
   model: document.querySelector("#model"),
@@ -16,11 +20,11 @@ const els = {
   localModel: document.querySelector("#localModel"),
   localModelInfo: document.querySelector("#localModelInfo"),
   downloadModelBtn: document.querySelector("#downloadModelBtn"),
-  localTranscribeBtn: document.querySelector("#localTranscribeBtn"),
   geminiKey: document.querySelector("#geminiKey"),
   geminiModel: document.querySelector("#geminiModel"),
   generateNoteBtn: document.querySelector("#generateNoteBtn"),
   transcript: document.querySelector("#transcript"),
+  transcriptBadge: document.querySelector("#transcriptBadge"),
   note: document.querySelector("#note"),
   copyTranscriptBtn: document.querySelector("#copyTranscriptBtn"),
   exportTranscriptBtn: document.querySelector("#exportTranscriptBtn"),
@@ -35,13 +39,13 @@ const els = {
 let currentSource = null;
 let currentHistoryItemId = null;
 let localModels = [];
+let transcriptionMode = "remote";
 
 function setBusy(isBusy, label) {
   els.status.textContent = label || (isBusy ? "Working" : "Idle");
   els.downloadBtn.disabled = isBusy;
   els.transcribeBtn.disabled = isBusy || !els.filePath.value;
-  els.downloadModelBtn.disabled = isBusy || !els.localModel.value;
-  els.localTranscribeBtn.disabled = isBusy || !els.filePath.value || !els.localModel.value;
+  els.downloadModelBtn.disabled = isBusy || transcriptionMode !== "local" || !els.localModel.value;
   els.generateNoteBtn.disabled = isBusy || !els.transcript.value.trim();
   els.copyTranscriptBtn.disabled = isBusy || !els.transcript.value.trim();
   els.exportTranscriptBtn.disabled = isBusy || !els.transcript.value.trim();
@@ -108,8 +112,12 @@ function renderHistory(items) {
       currentHistoryItemId = item.id || null;
       els.showFileBtn.disabled = !item.audioPath;
       els.transcribeBtn.disabled = !item.audioPath;
-      els.localTranscribeBtn.disabled = !item.audioPath;
       els.generateNoteBtn.disabled = !item.transcript;
+      setTranscriptBadge(
+        item.transcriptionMode === "local"
+          ? `Local · ${item.model || "model"}`
+          : `Remote · ${item.model || "API"}`
+      );
       renderSourceMeta({
         title: item.title,
         url: item.url,
@@ -128,6 +136,22 @@ function renderHistory(items) {
     });
     els.history.appendChild(row);
   }
+}
+
+function setTranscriptionMode(mode) {
+  transcriptionMode = mode;
+  const isRemote = mode === "remote";
+
+  els.remoteSettings.hidden = !isRemote;
+  els.localSettings.hidden = isRemote;
+  els.downloadModelBtn.hidden = isRemote;
+  els.remoteModeBtn.classList.toggle("secondary", !isRemote);
+  els.localModeBtn.classList.toggle("secondary", isRemote);
+  setBusy(false, els.status.textContent);
+}
+
+function setTranscriptBadge(label) {
+  els.transcriptBadge.textContent = label || "No transcript";
 }
 
 function renderDependencies(checks) {
@@ -225,7 +249,6 @@ els.downloadBtn.addEventListener("click", async () => {
     renderSourceMeta({ ...result, url: els.url.value });
     els.showFileBtn.disabled = false;
     els.transcribeBtn.disabled = false;
-    els.localTranscribeBtn.disabled = false;
     appendLog(`Downloaded: ${result.title} -> ${result.filePath}`);
     setBusy(false, "Downloaded");
   } catch (error) {
@@ -235,7 +258,12 @@ els.downloadBtn.addEventListener("click", async () => {
 });
 
 els.transcribeBtn.addEventListener("click", async () => {
-  setBusy(true, "Transcribing");
+  if (transcriptionMode === "local") {
+    await transcribeLocally();
+    return;
+  }
+
+  setBusy(true, "Remote transcribing");
   els.transcript.value = "";
   appendLog("Transcription requested.");
 
@@ -250,6 +278,7 @@ els.transcribeBtn.addEventListener("click", async () => {
     els.transcript.value = result.transcript;
     els.note.value = "";
     currentHistoryItemId = result.historyItem?.id || null;
+    setTranscriptBadge(`Remote · ${els.model.value}`);
     await refreshHistory();
     appendLog("Transcription completed and saved to history.");
     setBusy(false, "Done");
@@ -275,7 +304,7 @@ els.downloadModelBtn.addEventListener("click", async () => {
   }
 });
 
-els.localTranscribeBtn.addEventListener("click", async () => {
+async function transcribeLocally() {
   setBusy(true, "Local transcribing");
   els.transcript.value = "";
   const model = els.localModel.value;
@@ -290,6 +319,7 @@ els.localTranscribeBtn.addEventListener("click", async () => {
     els.transcript.value = result.transcript;
     els.note.value = "";
     currentHistoryItemId = result.historyItem?.id || null;
+    setTranscriptBadge(`Local · ${model}`);
     await refreshLocalModels();
     await refreshHistory();
     appendLog("Local transcription completed and saved to history.");
@@ -298,7 +328,7 @@ els.localTranscribeBtn.addEventListener("click", async () => {
     appendLog(error instanceof Error ? error.message : String(error));
     setBusy(false, "Error");
   }
-});
+}
 
 els.generateNoteBtn.addEventListener("click", async () => {
   setBusy(true, "Generating notes");
@@ -416,3 +446,6 @@ els.clearHistoryBtn.addEventListener("click", async () => {
 });
 
 els.localModel.addEventListener("change", renderSelectedLocalModel);
+els.remoteModeBtn.addEventListener("click", () => setTranscriptionMode("remote"));
+els.localModeBtn.addEventListener("click", () => setTranscriptionMode("local"));
+setTranscriptionMode("remote");
