@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PodNote Desktop MVP</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <section class="panel">
+        <div class="header">
+          <div>
+            <h1>PodNote Desktop MVP</h1>
+            <p>Local YouTube audio download, then Whisper transcription.</p>
+          </div>
+          <span id="status" class="status">Idle</span>
+        </div>
+
+        <label class="field">
+          <span>YouTube URL</span>
+          <input id="url" type="url" placeholder="https://www.youtube.com/watch?v=..." />
+        </label>
+
+        <div class="actions">
+          <button id="downloadBtn">Download m4a</button>
+          <button id="showFileBtn" disabled>Show file</button>
+        </div>
+
+        <label class="field">
+          <span>Audio file</span>
+          <input id="filePath" type="text" readonly placeholder="Downloaded file path appears here" />
+        </label>
+      </section>
+
+      <section class="panel">
+        <div class="grid">
+          <label class="field">
+            <span>Whisper API key</span>
+            <input id="apiKey" type="password" placeholder="Groq gsk_... or OpenAI sk_..." />
+          </label>
+          <label class="field">
+            <span>Base URL</span>
+            <input id="baseUrl" type="url" value="https://api.groq.com/openai/v1" />
+          </label>
+          <label class="field">
+            <span>Model</span>
+            <input id="model" type="text" value="whisper-large-v3" />
+          </label>
+        </div>
+
+        <div class="actions">
+          <button id="transcribeBtn" disabled>Transcribe</button>
+        </div>
+
+        <label class="field">
+          <span>Transcript</span>
+          <textarea id="transcript" rows="9" readonly placeholder="Transcript appears here"></textarea>
+        </label>
+      </section>
+
+      <section class="panel">
+        <div class="header compact">
+          <h2>Log</h2>
+          <button id="clearLogBtn" class="secondary">Clear</button>
+        </div>
+        <pre id="log"></pre>
+      </section>
+    </main>
+
+    <script src="./renderer.js"></script>
+  </body>
+</html>

@@ -1,0 +1,15 @@
+{
+  "name": "podnote-desktop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "PodNote desktop MVP for local YouTube audio download and transcription.",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron .",
+    "test:download": "node scripts/test-download.js",
+    "test:transcribe": "node scripts/test-transcribe.js"
+  },
+  "devDependencies": {
+    "electron": "^42.3.3"
+  }
+}

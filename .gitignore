@@ -11,9 +11,14 @@ frontend/node_modules/
 frontend/.expo/
 frontend/dist/
 frontend/web-build/
+desktop/node_modules/
 
 # Claude Code（含 session 權限記錄，不應進版控）
 .claude/
+
+# Local test artifacts
+_data/
+_scratch/
 
 # OS
 .DS_Store
