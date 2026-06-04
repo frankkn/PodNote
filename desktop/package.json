@@ -2,7 +2,8 @@
   "name": "podnote-desktop",
   "version": "0.1.0",
   "private": true,
-  "description": "PodNote desktop MVP for local YouTube audio download and transcription.",
+  "description": "PodNote desktop MVP for local YouTube/Podcast audio download and transcription.",
+  "author": "PodNote",
   "main": "src/main.js",
   "scripts": {
     "start": "electron .",
@@ -11,9 +12,42 @@
     "test:workflow": "node scripts/test-workflow.js",
     "test:local": "node scripts/test-local.js",
     "test:notes": "node scripts/test-notes.js",
-    "test:electron": "npx --yes electron@42.3.3 . --smoke-test"
+    "test:electron": "npx --yes electron@42.3.3 . --smoke-test",
+    "fetch:bin": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/fetch-binaries.ps1",
+    "dist": "npm run fetch:bin && electron-builder --win nsis"
+  },
+  "build": {
+    "appId": "com.podnote.desktop",
+    "productName": "PodNote",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "src/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "resources/bin",
+        "to": "bin",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
+    "win": {
+      "target": [
+        "nsis"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true
+    }
   },
   "devDependencies": {
-    "electron": "^42.3.3"
+    "electron": "^42.3.3",
+    "electron-builder": "^25.1.8"
   }
 }

@@ -182,6 +182,19 @@ button {
   color: #fff;
 }
 
+.version-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 2px;
+}
+
+.app-version {
+  font-size: 11px;
+  color: #64748b;
+  letter-spacing: 0.02em;
+}
+
 .log {
   max-height: 180px;
   overflow: auto;

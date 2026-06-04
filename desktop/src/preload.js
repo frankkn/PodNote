@@ -11,6 +11,7 @@ contextBridge.exposeInMainWorld("podnote", {
   saveSettings: (settings) => ipcRenderer.invoke("settings:save", { settings }),
   clearSettings: () => ipcRenderer.invoke("settings:clear"),
   checkDependencies: () => ipcRenderer.invoke("dependencies:check"),
+  getAppInfo: () => ipcRenderer.invoke("app:info"),
   copyText: (text) => ipcRenderer.invoke("clipboard:write", { text }),
   exportText: (payload) => ipcRenderer.invoke("export:text", payload),
   showFile: (filePath) => ipcRenderer.invoke("dialog:showFile", { filePath }),

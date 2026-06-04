@@ -37,6 +37,9 @@
           </div>
           <button id="logToggle" class="log-toggle" type="button">▸ Log</button>
           <pre id="log" class="log" hidden></pre>
+          <div class="version-row">
+            <span id="appVersion" class="app-version"></span>
+          </div>
         </div>
       </aside>
 
@@ -55,7 +58,7 @@
               <button id="checkDepsBtn" class="secondary" type="button">檢查相依性</button>
             </div>
             <div id="dependencyList" class="dependency-list">
-              <p class="empty">尚未檢查。點「檢查相依性」確認 yt-dlp、Python、faster-whisper、ffmpeg。</p>
+              <p class="empty">尚未檢查。點「檢查相依性」確認所需工具是否就緒。</p>
             </div>
           </div>
 
@@ -182,7 +185,7 @@
               <span id="transcriptBadge" class="badge">尚無逐字稿</span>
             </div>
 
-            <div class="seg" role="group" aria-label="轉錄模式">
+            <div id="transcribeModeSeg" class="seg" role="group" aria-label="轉錄模式">
               <button id="remoteModeBtn" type="button">Remote API</button>
               <button id="localModeBtn" class="secondary" type="button">Local model</button>
             </div>

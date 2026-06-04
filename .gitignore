@@ -12,6 +12,8 @@ frontend/.expo/
 frontend/dist/
 frontend/web-build/
 desktop/node_modules/
+desktop/dist/
+desktop/resources/bin/
 
 # Claude Code（含 session 權限記錄，不應進版控）
 .claude/

@@ -5,10 +5,29 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const repoRoot = path.resolve(__dirname, "..", "..");
-const defaultDownloadDir = path.join(repoRoot, "_data", "desktop-downloads");
 let historyPath;
 let localModelsDir;
 let settingsPath;
+
+// Local (Python/faster-whisper) transcription is only wired up in development.
+// Packaged Remote-only releases bundle yt-dlp + ffmpeg and hide local mode.
+const localTranscriptionAvailable = !app.isPackaged;
+
+function bundledBinDir() {
+  return path.join(process.resourcesPath, "bin");
+}
+
+function getDownloadDir() {
+  return app.isPackaged
+    ? path.join(app.getPath("userData"), "downloads")
+    : path.join(repoRoot, "_data", "desktop-downloads");
+}
+
+function getFfmpegLocation() {
+  if (app.isPackaged) return bundledBinDir();
+  if (process.env.FFMPEG_LOCATION) return process.env.FFMPEG_LOCATION;
+  return null;
+}
 
 if (process.argv.includes("--disable-hardware-acceleration")) {
   app.disableHardwareAcceleration();
@@ -142,6 +161,10 @@ app.on("window-all-closed", () => {
 });
 
 function getYtDlpCommand() {
+  if (app.isPackaged) {
+    return { command: path.join(bundledBinDir(), "yt-dlp.exe"), argsPrefix: [] };
+  }
+
   if (process.env.YTDLP_PATH) {
     return { command: process.env.YTDLP_PATH, argsPrefix: [] };
   }
@@ -412,7 +435,8 @@ ipcMain.handle("youtube:download", async (event, { url }) => {
   const trimmed = String(url || "").trim();
   if (!trimmed) throw new Error("Please paste a URL.");
 
-  fs.mkdirSync(defaultDownloadDir, { recursive: true });
+  const downloadDir = getDownloadDir();
+  fs.mkdirSync(downloadDir, { recursive: true });
 
   event.sender.send("job:log", "Reading media metadata...");
   const metadataResult = await runYtDlp(
@@ -421,20 +445,22 @@ ipcMain.handle("youtube:download", async (event, { url }) => {
   const metadata = parseMetadata(metadataResult.stdout);
   if (!metadata.id) throw new Error("Metadata did not include a media id.");
 
+  const ffmpegLocation = getFfmpegLocation();
   event.sender.send("job:log", "Starting local audio download...");
   await runYtDlp(
     [
       "--no-playlist",
       "-f",
       "ba[ext=m4a]/ba",
+      ...(ffmpegLocation ? ["--ffmpeg-location", ffmpegLocation] : []),
       "-o",
-      path.join(defaultDownloadDir, `${metadata.id}.%(ext)s`),
+      path.join(downloadDir, `${metadata.id}.%(ext)s`),
       trimmed,
     ],
     (line) => event.sender.send("job:log", line)
   );
 
-  const filePath = newestMatchingFile(defaultDownloadDir, metadata.id);
+  const filePath = newestMatchingFile(downloadDir, metadata.id);
   if (!filePath) throw new Error("Download finished, but no audio file was found.");
 
   return { ...metadata, filePath };
@@ -600,7 +626,6 @@ ipcMain.handle("settings:clear", async () => {
 
 ipcMain.handle("dependencies:check", async () => {
   const yt = getYtDlpCommand();
-  const python = getPythonCommand();
   const checks = [];
 
   const ytResult = await runCommand(yt.command, [...yt.argsPrefix, "--version"]);
@@ -611,28 +636,8 @@ ipcMain.handle("dependencies:check", async () => {
     detail: ytResult.ok ? (ytResult.stdout || ytResult.stderr).trim() : ytResult.error || ytResult.stderr.trim(),
   });
 
-  const pythonResult = await runCommand(python, ["--version"]);
-  checks.push({
-    id: "python",
-    label: "Python",
-    ok: pythonResult.ok,
-    detail: pythonResult.ok ? (pythonResult.stdout || pythonResult.stderr).trim() : pythonResult.error || pythonResult.stderr.trim(),
-  });
-
-  const fasterWhisperResult = await runCommand(python, [
-    "-c",
-    "import faster_whisper; print('faster-whisper ok')",
-  ]);
-  checks.push({
-    id: "faster-whisper",
-    label: "faster-whisper",
-    ok: fasterWhisperResult.ok,
-    detail: fasterWhisperResult.ok
-      ? (fasterWhisperResult.stdout || fasterWhisperResult.stderr).trim()
-      : fasterWhisperResult.error || fasterWhisperResult.stderr.trim(),
-  });
-
-  const ffmpegResult = await runCommand("ffmpeg", ["-version"]);
+  const ffmpegCommand = app.isPackaged ? path.join(bundledBinDir(), "ffmpeg.exe") : "ffmpeg";
+  const ffmpegResult = await runCommand(ffmpegCommand, ["-version"]);
   checks.push({
     id: "ffmpeg",
     label: "ffmpeg",
@@ -640,11 +645,44 @@ ipcMain.handle("dependencies:check", async () => {
     detail: ffmpegResult.ok
       ? (ffmpegResult.stdout.split(/\r?\n/)[0] || "ffmpeg ok")
       : ffmpegResult.error || "ffmpeg not found",
-    optional: true,
+    // Bundled and required in packaged builds; optional system tool in dev.
+    optional: !app.isPackaged,
   });
+
+  // Local transcription (Python + faster-whisper) only ships in development builds.
+  if (localTranscriptionAvailable) {
+    const python = getPythonCommand();
+
+    const pythonResult = await runCommand(python, ["--version"]);
+    checks.push({
+      id: "python",
+      label: "Python",
+      ok: pythonResult.ok,
+      detail: pythonResult.ok ? (pythonResult.stdout || pythonResult.stderr).trim() : pythonResult.error || pythonResult.stderr.trim(),
+    });
+
+    const fasterWhisperResult = await runCommand(python, [
+      "-c",
+      "import faster_whisper; print('faster-whisper ok')",
+    ]);
+    checks.push({
+      id: "faster-whisper",
+      label: "faster-whisper",
+      ok: fasterWhisperResult.ok,
+      detail: fasterWhisperResult.ok
+        ? (fasterWhisperResult.stdout || fasterWhisperResult.stderr).trim()
+        : fasterWhisperResult.error || fasterWhisperResult.stderr.trim(),
+    });
+  }
 
   return checks;
 });
+
+ipcMain.handle("app:info", async () => ({
+  packaged: app.isPackaged,
+  localTranscription: localTranscriptionAvailable,
+  version: app.getVersion(),
+}));
 
 ipcMain.handle("clipboard:write", async (_event, { text }) => {
   clipboard.writeText(String(text || ""));

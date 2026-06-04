@@ -5,6 +5,7 @@ const els = {
   statusDot: document.querySelector("#statusDot"),
   logToggle: document.querySelector("#logToggle"),
   log: document.querySelector("#log"),
+  appVersion: document.querySelector("#appVersion"),
   // views
   viewSetup: document.querySelector("#view-setup"),
   viewGenerate: document.querySelector("#view-generate"),
@@ -43,6 +44,7 @@ const els = {
   filePath: document.querySelector("#filePath"),
   showFileBtn: document.querySelector("#showFileBtn"),
   sourceMeta: document.querySelector("#sourceMeta"),
+  transcribeModeSeg: document.querySelector("#transcribeModeSeg"),
   remoteModeBtn: document.querySelector("#remoteModeBtn"),
   localModeBtn: document.querySelector("#localModeBtn"),
   remoteSettings: document.querySelector("#remoteSettings"),
@@ -928,11 +930,27 @@ els.logToggle.addEventListener("click", () => {
 
 /* ===================== Init ===================== */
 
+function applyCapabilities(info) {
+  if (info && info.version) {
+    els.appVersion.textContent = `v${info.version}`;
+  }
+  if (info && info.localTranscription === false) {
+    // Remote-only (packaged) build: drop the local transcription affordances.
+    els.transcribeModeSeg.hidden = true;
+    setTranscriptionMode("remote");
+  } else {
+    refreshLocalModels().catch(logError);
+  }
+}
+
 window.podnote.onLog((line) => appendLog(line));
 setSourceType("youtube");
 setTranscriptionMode("remote");
 setView("setup");
 
 refreshHistory().catch(logError);
-refreshLocalModels().catch(logError);
 loadSettings().catch(logError);
+window.podnote.getAppInfo().then(applyCapabilities).catch((error) => {
+  logError(error);
+  refreshLocalModels().catch(logError);
+});
