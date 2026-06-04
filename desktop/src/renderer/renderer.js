@@ -355,7 +355,7 @@ function resolveRemote() {
 function updateSettingsHint() {
   const missing = [];
   if (!settings.geminiApiKey) missing.push("Gemini(必填)");
-  if (transcriptionMode === "remote" && !resolveRemote().apiKey) missing.push("轉錄 API (選填)");
+  if (transcriptionMode === "remote" && !resolveRemote().apiKey) missing.push("轉錄 API (必填)");
 
   if (missing.length) {
     els.settingsHintText.textContent = `尚未設定金鑰：${missing.join("、")}。`;
