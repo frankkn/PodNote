@@ -1,9 +1,9 @@
-name: Deploy to HF Space
+name: Deploy Web to HF Space
 
 on:
   push:
     tags:
-      - "v*"
+      - "web/v*"
 
 jobs:
   deploy:
