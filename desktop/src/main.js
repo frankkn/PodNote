@@ -570,6 +570,102 @@ ipcMain.handle("youtube:download", async (event, { url }) => {
   return { ...metadata, filePath };
 });
 
+// Groq/OpenAI 轉錄 API 單檔上限 25MB；留安全邊際。超過就用 ffmpeg 切段
+// （比照 backend transcriber 的分段策略，否則長節目會被 API 拒收）。
+const REMOTE_SINGLE_SHOT_MAX_BYTES = 24 * 1024 * 1024;
+const REMOTE_CHUNK_SECONDS = 600;
+
+function resolveFfmpegExe() {
+  if (fs.existsSync(userFfmpegPath())) return userFfmpegPath();
+  if (process.env.FFMPEG_LOCATION) return path.join(process.env.FFMPEG_LOCATION, "ffmpeg.exe");
+  return "ffmpeg"; // 開發環境靠 PATH
+}
+
+async function uploadForTranscription(endpoint, key, model, bytes, filename) {
+  const form = new FormData();
+  form.append("model", model);
+  form.append("file", new Blob([bytes]), filename);
+
+  const response = await fetch(endpoint, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${key}` },
+    body: form,
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`Transcription failed (${response.status}): ${text}`);
+  }
+  const json = await response.json();
+  return json.text || "";
+}
+
+// 用 ffmpeg 把音檔轉成 16kHz 單聲道 mp3 並依秒數切段，回傳依序排好的檔案路徑。
+async function splitAudioForUpload(filePath, outDir, segmentSeconds) {
+  fs.mkdirSync(outDir, { recursive: true });
+  const result = await runCommand(resolveFfmpegExe(), [
+    "-hide_banner",
+    "-loglevel",
+    "error",
+    "-y",
+    "-i",
+    filePath,
+    "-vn",
+    "-ac",
+    "1",
+    "-ar",
+    "16000",
+    "-c:a",
+    "libmp3lame",
+    "-b:a",
+    "64k",
+    "-f",
+    "segment",
+    "-segment_time",
+    String(segmentSeconds),
+    path.join(outDir, "chunk_%04d.mp3"),
+  ]);
+
+  // spawn 失敗（error 有值）= 找不到 ffmpeg，沿用既有的安裝提示流程。
+  if (result.error) throw new Error("FFMPEG_REQUIRED");
+  if (!result.ok) {
+    throw new Error(`Audio splitting failed: ${(result.stderr || `ffmpeg exited with ${result.code}`).trim()}`);
+  }
+
+  return fs
+    .readdirSync(outDir)
+    .filter((name) => /^chunk_\d+\.mp3$/.test(name))
+    .sort()
+    .map((name) => path.join(outDir, name));
+}
+
+async function transcribeRemote(filePath, { key, endpoint, model, log }) {
+  const { size } = fs.statSync(filePath);
+  if (size <= REMOTE_SINGLE_SHOT_MAX_BYTES) {
+    log(`Uploading audio to ${endpoint}`);
+    const bytes = await fs.promises.readFile(filePath);
+    return uploadForTranscription(endpoint, key, model, bytes, path.basename(filePath));
+  }
+
+  log(`Audio is ${(size / 1048576).toFixed(1)} MB; splitting into ${REMOTE_CHUNK_SECONDS}s chunks...`);
+  const chunkDir = path.join(app.getPath("temp"), `podnote-chunks-${crypto.randomUUID()}`);
+  try {
+    const chunks = await splitAudioForUpload(filePath, chunkDir, REMOTE_CHUNK_SECONDS);
+    if (!chunks.length) throw new Error("Audio splitting produced no output.");
+
+    const parts = [];
+    for (let i = 0; i < chunks.length; i++) {
+      log(`Transcribing chunk ${i + 1}/${chunks.length} to ${endpoint}`);
+      const bytes = await fs.promises.readFile(chunks[i]);
+      const text = await uploadForTranscription(endpoint, key, model, bytes, path.basename(chunks[i]));
+      if (text.trim()) parts.push(text.trim());
+    }
+    return parts.join(" ").trim();
+  } finally {
+    fs.rmSync(chunkDir, { recursive: true, force: true });
+  }
+}
+
 ipcMain.handle("audio:transcribe", async (event, { filePath, apiKey, baseUrl, model, source }) => {
   const key = String(apiKey || "").trim();
   if (!key) throw new Error("Please enter a Groq or OpenAI API key.");
@@ -578,28 +674,13 @@ ipcMain.handle("audio:transcribe", async (event, { filePath, apiKey, baseUrl, mo
   const endpoint = `${String(baseUrl || "https://api.groq.com/openai/v1").replace(/\/$/, "")}/audio/transcriptions`;
   const selectedModel = String(model || "whisper-large-v3").trim();
 
-  event.sender.send("job:log", `Uploading audio to ${endpoint}`);
-
-  const bytes = await fs.promises.readFile(filePath);
-  const form = new FormData();
-  form.append("model", selectedModel);
-  form.append("file", new Blob([bytes]), path.basename(filePath));
-
-  const response = await fetch(endpoint, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${key}`,
-    },
-    body: form,
+  const transcript = await transcribeRemote(filePath, {
+    key,
+    endpoint,
+    model: selectedModel,
+    log: (line) => event.sender.send("job:log", line),
   });
 
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error(`Transcription failed (${response.status}): ${text}`);
-  }
-
-  const json = await response.json();
-  const transcript = json.text || "";
   const historyItem = {
     id: crypto.randomUUID(),
     title: source?.title || path.basename(filePath),

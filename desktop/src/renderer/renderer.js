@@ -670,12 +670,7 @@ els.pickFileBtn.addEventListener("click", async () => {
   }
 });
 
-els.transcribeBtn.addEventListener("click", async () => {
-  if (transcriptionMode === "local") {
-    await transcribeLocally();
-    return;
-  }
-
+async function transcribeRemotely() {
   const remote = resolveRemote();
   if (!remote.apiKey) {
     updateSettingsHint();
@@ -704,9 +699,30 @@ els.transcribeBtn.addEventListener("click", async () => {
     setBusy(false, "完成", "ok");
     appendLog("轉錄完成並存入歷史。");
   } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    // 長節目超過 API 單檔上限時，後端會用 ffmpeg 切段；缺 ffmpeg 才走到這。
+    if (message.includes("FFMPEG_REQUIRED")) {
+      setBusy(false, "需要 ffmpeg", "error");
+      appendLog("這個音檔較長，需要 ffmpeg 切段後上傳。");
+      if (confirm("這個音檔較長，需要 ffmpeg 切段後上傳，是否現在下載 ffmpeg？（約 90 MB，只需一次）")) {
+        if (await ensureFfmpeg()) {
+          appendLog("重試轉錄…");
+          await transcribeRemotely();
+        }
+      }
+      return;
+    }
     logError(error);
     setBusy(false, "錯誤", "error");
   }
+}
+
+els.transcribeBtn.addEventListener("click", async () => {
+  if (transcriptionMode === "local") {
+    await transcribeLocally();
+    return;
+  }
+  await transcribeRemotely();
 });
 
 async function transcribeLocally() {
