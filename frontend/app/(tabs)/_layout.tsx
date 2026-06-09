@@ -52,6 +52,15 @@ export default function TabLayout() {
           ),
         }}
       />
+      <Tabs.Screen
+        name="guide"
+        options={{
+          title: "使用說明",
+          tabBarIcon: ({ focused }) => (
+            <Text style={{ fontSize: 20, opacity: focused ? 1 : 0.5 }}>📖</Text>
+          ),
+        }}
+      />
     </Tabs>
   );
 }

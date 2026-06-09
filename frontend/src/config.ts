@@ -11,4 +11,6 @@ export const BACKEND_URL =
 
 export const GEMINI_KEY_STORAGE = "gemini_api_key";
 export const GROQ_KEY_STORAGE = "groq_api_key";
+export const OPENAI_KEY_STORAGE = "openai_api_key";
+export const TRANSCRIBE_PROVIDER_STORAGE = "transcribe_provider";
 export const APP_VERSION = appConfig.expo.version;

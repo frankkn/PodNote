@@ -13,7 +13,7 @@ import { useRouter } from "expo-router";
 
 import { createJob, TranscribeMode } from "@/api/backend";
 import { summarize } from "@/api/gemini";
-import { GEMINI_KEY_STORAGE, GROQ_KEY_STORAGE } from "@/config";
+import { GEMINI_KEY_STORAGE, GROQ_KEY_STORAGE, OPENAI_KEY_STORAGE, TRANSCRIBE_PROVIDER_STORAGE } from "@/config";
 import { getItem } from "@/lib/secureStore";
 import { addJob, dismissJob, getJobs, updateJob, ActiveJob } from "@/store/activeJobs";
 import { savePending } from "@/store/results";
@@ -173,17 +173,27 @@ export default function GenerateTab() {
   const onSubmit = async () => {
     setMsg(null);
     let groqKey: string | undefined;
+    let openaiKey: string | undefined;
     if (mode === "gpu") {
-      groqKey = (await getItem(GROQ_KEY_STORAGE))?.trim() || undefined;
-      if (!groqKey) {
-        setMsg("快速模式需要 Groq API Key，請先到設定頁輸入，或改用慢速模式。");
-        return;
+      const prov = (await getItem(TRANSCRIBE_PROVIDER_STORAGE)) ?? "groq";
+      if (prov === "openai") {
+        openaiKey = (await getItem(OPENAI_KEY_STORAGE))?.trim() || undefined;
+        if (!openaiKey) {
+          setMsg("快速模式已選擇 OpenAI，請先到設定頁輸入 OpenAI API Key，或切換回 Groq。");
+          return;
+        }
+      } else {
+        groqKey = (await getItem(GROQ_KEY_STORAGE))?.trim() || undefined;
+        if (!groqKey) {
+          setMsg("快速模式需要 Groq API Key，請先到設定頁輸入，或改用慢速模式。");
+          return;
+        }
       }
     }
     setSubmitting(true);
     const trimmedUrl = url.trim();
     try {
-      const { job_id } = await createJob(trimmedUrl, mode, groqKey);
+      const { job_id } = await createJob(trimmedUrl, mode, groqKey, openaiKey);
       addJob(job_id, trimmedUrl, mode);
       setUrl("");
       startPolling(job_id)

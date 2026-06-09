@@ -18,8 +18,9 @@ TranscribeMode = Literal["cpu", "gpu"]
 class CreateJobRequest(BaseModel):
     url: HttpUrl
     mode: TranscribeMode = "gpu"
-    # 使用者自帶的 Groq API Key。只有 gpu 模式需要；後端過水使用、不儲存、不寫 log。
+    # 使用者自帶的轉錄 API Key（Groq 或 OpenAI 擇一）。後端過水使用、不儲存、不寫 log。
     groq_api_key: str | None = None
+    openai_api_key: str | None = None
 
 
 class CreateJobResponse(BaseModel):

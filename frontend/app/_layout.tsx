@@ -12,9 +12,10 @@ import { Stack, usePathname, useRouter } from "expo-router";
 const BREAKPOINT = 768;
 
 const NAV_ITEMS = [
-  { href: "/", label: "生成筆記", emoji: "✏️", match: (p: string) => p === "/" || p.startsWith("/(tabs)") },
+  { href: "/", label: "生成筆記", emoji: "✏️", match: (p: string) => p === "/" || (p.startsWith("/(tabs)") && !p.includes("history") && !p.includes("settings") && !p.includes("guide")) },
   { href: "/history", label: "筆記歷史", emoji: "📋", match: (p: string) => p.includes("history") },
   { href: "/settings", label: "設定", emoji: "⚙️", match: (p: string) => p.includes("settings") },
+  { href: "/guide", label: "使用說明", emoji: "📖", match: (p: string) => p.includes("guide") },
 ];
 
 function Sidebar({ hidden }: { hidden: boolean }) {

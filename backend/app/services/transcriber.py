@@ -40,15 +40,20 @@ def transcribe(
     path: str,
     mode: str = "gpu",
     api_key: Optional[str] = None,
+    base_url: Optional[str] = None,
+    stt_model: Optional[str] = None,
     on_progress: ProgressCb = None,
     on_partial: PartialCb = None,
 ) -> str:
     """轉錄音檔。mode="cpu" 用本機 faster-whisper（慢、免 key）；
-    mode="gpu" 呼叫 Groq/OpenAI 相容 API（快、需使用者自帶 key）。"""
+    mode="gpu" 呼叫 Groq/OpenAI 相容 API（快、需使用者自帶 key）。
+    base_url / stt_model 可覆寫 settings 預設值，用於切換 OpenAI vs Groq。"""
     if mode == "gpu":
         if not api_key:
-            raise ValueError("快速模式需要 Groq API Key，請到設定頁輸入。")
-        return _transcribe_groq(path, api_key, on_progress, on_partial)
+            raise ValueError("快速模式需要 Groq 或 OpenAI API Key，請到設定頁輸入。")
+        effective_base_url = base_url or settings.stt_base_url
+        effective_model = stt_model or settings.stt_model
+        return _transcribe_groq(path, api_key, effective_base_url, effective_model, on_progress, on_partial)
     return _transcribe_cpu(path, on_progress, on_partial)
 
 
@@ -122,29 +127,29 @@ def _to_wav_bytes(samples: np.ndarray) -> bytes:
     return buf.getvalue()
 
 
-def _transcribe_chunk_remote(wav_bytes: bytes, api_key: str) -> str:
+def _transcribe_chunk_remote(wav_bytes: bytes, api_key: str, base_url: str, model: str) -> str:
     """把一段 wav 丟給 Groq/OpenAI 相容的轉錄 API。key 過水使用、不記錄。"""
     resp = httpx.post(
-        f"{settings.stt_base_url}/audio/transcriptions",
+        f"{base_url}/audio/transcriptions",
         headers={"Authorization": f"Bearer {api_key}"},
         files={"file": ("chunk.wav", wav_bytes, "audio/wav")},
         data={
-            "model": settings.stt_model,
+            "model": model,
             "response_format": "text",
             "prompt": settings.zh_prompt,
         },
         timeout=300,
     )
     if resp.status_code in (401, 403):
-        raise ValueError("Groq API Key 無效或無權限，請到設定頁確認。")
+        raise ValueError("API Key 無效或無權限，請到設定頁確認。")
     if resp.status_code == 429:
-        raise ValueError("Groq 配額不足或請求過於頻繁，請稍後再試。")
+        raise ValueError("API 配額不足或請求過於頻繁，請稍後再試。")
     resp.raise_for_status()
     return resp.text.strip()
 
 
 def _transcribe_groq(
-    path: str, api_key: str, on_progress: ProgressCb, on_partial: PartialCb
+    path: str, api_key: str, base_url: str, model: str, on_progress: ProgressCb, on_partial: PartialCb
 ) -> str:
     """分段上傳到外部 GPU API：保留與 CPU 模式相同的進度/部分逐字稿 UX，
     同時讓每段 wav 安全低於 API 的單檔大小上限。"""
@@ -156,7 +161,7 @@ def _transcribe_groq(
     offset = 0
     while offset < total_samples:
         chunk = audio[offset : offset + chunk_samples]
-        text = _transcribe_chunk_remote(_to_wav_bytes(chunk), api_key)
+        text = _transcribe_chunk_remote(_to_wav_bytes(chunk), api_key, base_url, model)
         if text:
             parts.append(text)
         offset += chunk_samples

@@ -17,13 +17,19 @@ export type TranscribeMode = "cpu" | "gpu";
 export async function createJob(
   url: string,
   mode: TranscribeMode,
-  groqApiKey?: string
+  groqApiKey?: string,
+  openaiApiKey?: string
 ): Promise<{ job_id: string; state: JobState }> {
   const res = await fetch(`${BACKEND_URL}/jobs`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    // groq_api_key 只在快速模式送出，後端過水使用、不儲存。
-    body: JSON.stringify({ url, mode, groq_api_key: groqApiKey ?? null }),
+    // key 只在快速模式送出，後端過水使用、不儲存。Groq / OpenAI 擇一。
+    body: JSON.stringify({
+      url,
+      mode,
+      groq_api_key: groqApiKey ?? null,
+      openai_api_key: openaiApiKey ?? null,
+    }),
   });
   if (!res.ok) {
     // 後端會在 detail 帶友善訊息（例如速率限制、忙碌中）

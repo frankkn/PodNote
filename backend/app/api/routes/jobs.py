@@ -27,10 +27,17 @@ def _client_ip(request: Request) -> str:
     return request.client.host if request.client else "unknown"
 
 
-def _run_job(job_id: str, url: str, mode: str, api_key: str | None) -> None:
+def _run_job(
+    job_id: str,
+    url: str,
+    mode: str,
+    api_key: str | None,
+    base_url: str | None = None,
+    stt_model: str | None = None,
+) -> None:
     """背景執行：檢查長度 → 下載 → 轉檔。失敗時把錯誤寫進 job。
 
-    api_key 僅在此函式內過水使用，不寫進 job_store、不記錄。
+    api_key / base_url / stt_model 僅在此函式內過水使用，不寫進 job_store、不記錄。
     """
     store.update(job_id, state=JobState.running, stage="probing")
     path: str | None = None
@@ -69,6 +76,8 @@ def _run_job(job_id: str, url: str, mode: str, api_key: str | None) -> None:
             path,
             mode=mode,
             api_key=api_key,
+            base_url=base_url,
+            stt_model=stt_model,
             on_progress=on_progress,
             on_partial=on_partial,
         )
@@ -94,12 +103,23 @@ def _run_job(job_id: str, url: str, mode: str, api_key: str | None) -> None:
 def create_job(
     payload: CreateJobRequest, background: BackgroundTasks, request: Request
 ) -> CreateJobResponse:
-    # 快速模式必須帶 key（key 不存、僅過水）
-    if payload.mode == "gpu" and not (payload.groq_api_key or "").strip():
+    # 快速模式必須帶 Groq 或 OpenAI key 其中一個（key 僅過水使用）
+    groq_key = (payload.groq_api_key or "").strip() or None
+    openai_key = (payload.openai_api_key or "").strip() or None
+    if payload.mode == "gpu" and not (groq_key or openai_key):
         raise HTTPException(
             status_code=400,
-            detail="快速模式需要 Groq API Key，請到設定頁輸入，或改用慢速模式。",
+            detail="快速模式需要 Groq 或 OpenAI API Key，請到設定頁輸入，或改用慢速模式。",
         )
+
+    if openai_key:
+        effective_key = openai_key
+        effective_base_url = "https://api.openai.com/v1"
+        effective_model = "whisper-1"
+    else:
+        effective_key = groq_key
+        effective_base_url = None
+        effective_model = None
 
     # 防濫用：速率限制（每 IP）
     if not rate_limiter.allow(_client_ip(request)):
@@ -126,9 +146,8 @@ def create_job(
             detail="伺服器目前較忙，請稍後再試。",
         )
 
-    key = (payload.groq_api_key or "").strip() or None
     job = store.create(mode=payload.mode)
-    background.add_task(_run_job, job.id, str(payload.url), payload.mode, key)
+    background.add_task(_run_job, job.id, str(payload.url), payload.mode, effective_key, effective_base_url, effective_model)
     return CreateJobResponse(job_id=job.id, state=job.state)
 
 
