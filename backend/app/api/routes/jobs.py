@@ -1,3 +1,5 @@
+import os
+
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Request
 
 from app.config import settings
@@ -31,6 +33,7 @@ def _run_job(job_id: str, url: str, mode: str, api_key: str | None) -> None:
     api_key 僅在此函式內過水使用，不寫進 job_store、不記錄。
     """
     store.update(job_id, state=JobState.running, stage="probing")
+    path: str | None = None
     try:
         title, duration = probe(url)
         store.update(job_id, title=title)
@@ -78,6 +81,13 @@ def _run_job(job_id: str, url: str, mode: str, api_key: str | None) -> None:
         )
     except Exception as exc:  # noqa: BLE001 - 任何失敗都回報給前端
         store.update(job_id, state=JobState.error, stage="error", error=str(exc))
+    finally:
+        # 轉錄完即刪下載的音檔；HF Space 磁碟有限，不清會逐集累積塞爆。
+        if path and os.path.exists(path):
+            try:
+                os.remove(path)
+            except OSError:
+                pass
 
 
 @router.post("", response_model=CreateJobResponse)
