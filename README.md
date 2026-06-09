@@ -128,6 +128,7 @@ PodNote/
 
 | 版本 | 日期 | 重點 |
 |------|------|------|
+| v1.3.0 | 2026-06-09 | 遠端轉錄改為分段上傳（超過 24MB 的音檔以 ffmpeg 切成 16kHz 單聲道分段），長節目不再因 API 單檔上限而失敗；缺 ffmpeg 時提示安裝並自動重試 |
 | v1.2.0 | 2026-06-09 | 改用 GitHub Actions（windows runner）自動打包發版；web / desktop 以 tag prefix 分流互不干擾；安裝檔名固定為 `PodNote-Setup-<version>.exe` |
 | v0.2.0 | 2026-06-04 | 下載按鈕與網址輸入框同列；逐字稿框縮為 2 行；設定頁標示轉錄 API Key 為必填 |
 | v0.1.1 | 2026-06-04 | 首個獨立 Windows 桌面版：免後端、打包為安裝檔；內建 yt-dlp、首次執行自動取得 ffmpeg；Sidebar 三欄式佈局；Gemini 筆記生成；GitHub 自動更新（electron-updater） |
