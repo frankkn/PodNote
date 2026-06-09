@@ -17,6 +17,16 @@ PodNote 提供 **Web 版** 與 **桌面版**，功能與金鑰需求不同：
 
 > 以下文件為 **Web 版** 的使用與設定說明。
 
+## 畫面截圖
+
+![設定](docs/screenshots/Config.png)
+
+![逐字稿](docs/screenshots/transcript.png)
+
+![筆記歷史](docs/screenshots/history.png)
+
+![生成筆記](docs/screenshots/manual.png)
+
 ## 立即打開 Web App
 
 最快方式：不用安裝，直接開已部署的線上版。
