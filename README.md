@@ -1,134 +1,140 @@
+<div align="right">
+
+**English** | [繁體中文](README.zh-TW.md)
+
+</div>
+
 # PodNote
 
-把 Podcast / YouTube 內容轉成逐字稿，再用 Gemini 整理成結構化筆記。
+Turn Podcast / YouTube content into transcripts, then let Gemini organize them into structured notes.
 
-## 兩種版本（Web / 桌面）
+## Two Editions (Web / Desktop)
 
-PodNote 提供 **Web 版** 與 **桌面版**，功能與金鑰需求不同：
+PodNote comes in a **Web edition** and a **Desktop edition**, with different capabilities and API key requirements:
 
-| | Web 版 | 桌面版 |
+| | Web | Desktop |
 |---|---|---|
-| **平台** | Web + Android | Windows 桌面 |
-| **音訊來源** | Podcast | YouTube / Podcast / 上傳音檔 |
-| **轉錄** | 後端 faster-whisper 代勞（伺服器跑）<br>或外接 Groq（較快） | 雲端 Whisper API（Groq / OpenAI）|
-| **筆記** | Gemini | Gemini |
-| **金鑰需求** | Gemini（必填）<br>Groq（選填，用快速轉錄時） | Groq 或 OpenAI（必填）<br>＋ Gemini（必填）|
-| **安裝** | 免安裝，直接開線上版 → https://frankkn-podnote-api.hf.space | 下載 [installer.exe](https://github.com/frankkn/PodNote/releases) 安裝（Windows）|
+| **Platform** | Web + Android | Windows desktop |
+| **Audio sources** | Podcast | YouTube / Podcast / uploaded audio files |
+| **Transcription** | Backend faster-whisper (runs on the server)<br>or external Groq (faster) | Cloud Whisper API (Groq / OpenAI) |
+| **Notes** | Gemini | Gemini |
+| **API keys** | Gemini (required)<br>Groq (optional, for fast transcription) | Groq or OpenAI (required)<br>+ Gemini (required) |
+| **Installation** | None — open the live app → https://frankkn-podnote-api.hf.space | Download the [installer.exe](https://github.com/frankkn/PodNote/releases) (Windows) |
 
-## 桌面版畫面截圖
+## Desktop Screenshots
 
-![設定](docs/screenshots/Config.png)
+![Settings](docs/screenshots/Config.png)
 
-![逐字稿](docs/screenshots/transcript.png)
+![Transcript](docs/screenshots/transcript.png)
 
-![筆記歷史](docs/screenshots/history.png)
+![Note history](docs/screenshots/history.png)
 
-![生成筆記](docs/screenshots/manual.png)
+![Generating notes](docs/screenshots/manual.png)
 
-## 立即打開 Web App
+## Open the Web App Now
 
-最快方式：不用安裝，直接開已部署的線上版。
+The fastest way to get started: no installation, just open the deployed live version.
 
 ```text
 https://frankkn-podnote-api.hf.space
 ```
 
-第一次開 Hugging Face Space 可能會等幾秒喚醒服務。打開 App 後，到設定頁輸入自己的 Gemini API Key（整理筆記用）；若要用「快速」轉錄，再加上自己的 Groq API Key。設定完就可以貼 Podcast 連結產生筆記。
+The first visit may take a few seconds while the Hugging Face Space wakes up. Once the app is open, go to the Settings page and enter your own Gemini API Key (used for generating notes); if you want "Fast" transcription, add your own Groq API Key as well. After that, just paste a Podcast link to generate notes.
 
-轉錄有兩種模式：
+There are two transcription modes:
 
-- **快速（推薦）**：用外部 GPU（Groq Whisper API）轉錄，又快又準。需要在設定頁輸入自己的 Groq API Key 跟 Gemini API Key（參考下方申請 API Key 流程，非常簡單！）。金鑰存在本機，產生筆記時才傳到後端呼叫 Groq，用完即丟、不會保存。
-- **慢速（簡單）**：用伺服器 CPU 轉錄，只需要申請 Gemini API Key，但速度較慢、有長度與併發限制。
+- **Fast (recommended)**: Transcribes on an external GPU via the Groq Whisper API — quick and accurate. You need to enter your own Groq API Key and Gemini API Key on the Settings page (see the API key guide below — it's really easy!). Keys are stored locally on your device; they are only sent to the backend to call Groq when you generate notes, used once, and never stored.
+- **Slow (simple)**: Transcribes on the server's CPU. Only a Gemini API Key is required, but it is slower and subject to length and concurrency limits.
 
-服務狀態檢查：
+Service health check:
 
 ```text
 https://frankkn-podnote-api.hf.space/health
 ```
 
-## 立即使用桌面版 App
+## Use the Desktop App Now
 
-桌面版是獨立的 **Windows 應用程式**，不需要自己架後端，下載安裝就能用。內建 yt-dlp 並會自動取得 ffmpeg，可直接處理 **YouTube / Podcast 連結或本機音檔**，轉錄走雲端 Whisper（Groq 或 OpenAI），筆記用 Gemini。
+The desktop edition is a standalone **Windows application** — no backend to set up, just download and install. It bundles yt-dlp and fetches ffmpeg automatically, so it can handle **YouTube / Podcast links or local audio files** directly. Transcription goes through cloud Whisper (Groq or OpenAI), and notes are generated with Gemini.
 
-### 下載與安裝
+### Download and Install
 
-1. 開啟 [GitHub Releases 頁面](https://github.com/frankkn/PodNote/releases)。
-2. 在最新版本（標記 **Latest**）的 **Assets** 區，下載安裝檔 `PodNote-Setup-X.Y.Z.exe`。
-3. 雙擊執行安裝檔。若 Windows SmartScreen 跳出「**Windows 已保護您的電腦**」，點「**其他資訊**」→「**仍要執行**」即可（未簽章應用程式的正常提示）。
-4. 安裝完成後，從開始選單或桌面捷徑開啟 **PodNote**。
+1. Open the [GitHub Releases page](https://github.com/frankkn/PodNote/releases).
+2. Under the latest release (tagged **Latest**), download the installer `PodNote-Setup-X.Y.Z.exe` from the **Assets** section.
+3. Double-click the installer. If Windows SmartScreen shows "**Windows protected your PC**", click "**More info**" → "**Run anyway**" (a normal prompt for unsigned applications).
+4. After installation, launch **PodNote** from the Start Menu or the desktop shortcut.
 
-### 首次設定
+### First-Time Setup
 
-開啟 App 後，到**設定頁**輸入金鑰（申請方式見下方「[申請 API Key](#申請-api-key)」）：
+Once the app is open, go to the **Settings page** and enter your API keys (see "[Getting API Keys](#getting-api-keys)" below for how to obtain them):
 
-- **Gemini API Key**（整理筆記用，必填）
-- **Groq 或 OpenAI API Key**（雲端 Whisper 轉錄用，必填；兩者擇一，都填時優先用 OpenAI）
+- **Gemini API Key** (for generating notes, required)
+- **Groq or OpenAI API Key** (for cloud Whisper transcription, required; either one works — if both are set, OpenAI takes priority)
 
-金鑰存在本機，產生筆記時才隨請求送出呼叫 API，用完即丟、不會保存。
+Keys are stored locally on your device; they are only attached to requests when you generate notes, used once, and never stored.
 
-### 開始使用
+### Getting Started
 
-回到主畫面，貼上 **YouTube / Podcast 連結**或選擇**本機音檔**，按下開始即可自動下載音訊、轉錄逐字稿，並用 Gemini 整理成結構化筆記。
+Back on the main screen, paste a **YouTube / Podcast link** or pick a **local audio file**, then hit Start. The app automatically downloads the audio, transcribes it, and organizes the transcript into structured notes with Gemini.
 
-> **自動更新**：桌面版內建 electron-updater，啟動時會自動檢查 GitHub Releases 是否有新版，有的話會在背景下載並提示更新。
+> **Auto-update**: The desktop edition ships with electron-updater. On startup it checks GitHub Releases for a new version, downloads it in the background if available, and prompts you to update.
 
-## 申請 API Key
+## Getting API Keys
 
-### Gemini API Key（必要）
+### Gemini API Key (required)
 
-用於把逐字稿整理成筆記，免費額度通常足夠個人使用。
+Used to turn transcripts into notes. The free tier is usually more than enough for personal use.
 
-1. 開啟 [https://aistudio.google.com](https://aistudio.google.com)，用 Google 帳號登入。
-2. 左側選單點「**Get API key**」。
-3. 點「**Create API key**」→ 選擇一個 Google Cloud 專案（或讓它自動建立）→ 點「建立 API 金鑰」。
-4. 複製畫面上顯示的金鑰（以 `AIza` 開頭）。
-5. 到 App 的**設定頁**，把金鑰貼入「Gemini API Key」欄位，按儲存。
+1. Open [https://aistudio.google.com](https://aistudio.google.com) and sign in with your Google account.
+2. Click "**Get API key**" in the left sidebar.
+3. Click "**Create API key**" → pick a Google Cloud project (or let it create one automatically) → click "Create API key".
+4. Copy the key shown on screen (it starts with `AIza`).
+5. In the app's **Settings page**, paste the key into the "Gemini API Key" field and save.
 
-> 若遇到 429 配額錯誤，通常是該 key 對特定模型的免費額度用完。可到 [aistudio.google.com](https://aistudio.google.com) 用新的 Google 專案重建一把 key。
-
----
-
-### Groq API Key（快速模式用，選填）
-
-只有選「快速（推薦）」轉錄模式才需要。目前免費、不需綁信用卡。
-
-1. 開啟 [https://console.groq.com](https://console.groq.com)，用 Google 帳號或 email 登入／註冊。
-2. 右上角選單點「**API Keys**」。
-3. 點「**Create API Key**」，取個名字（例如 `podnote`），按建立。
-4. 複製畫面上顯示的金鑰（以 `gsk_` 開頭）。**此金鑰只會顯示一次**，請立即複製。
-5. 到 App 的**設定頁**，把金鑰貼入「Groq API Key」欄位，按儲存。
-
-> 沒有 Groq Key 也沒關係，改選「慢速（簡單）」模式即可使用，不需任何額外設定。
+> If you hit a 429 quota error, the key's free quota for a specific model has usually run out. You can go to [aistudio.google.com](https://aistudio.google.com) and create a new key under a new Google project.
 
 ---
 
-## 專案結構
+### Groq API Key (for Fast mode, optional)
+
+Only needed if you choose the "Fast (recommended)" transcription mode. Currently free, no credit card required.
+
+1. Open [https://console.groq.com](https://console.groq.com) and sign in / register with a Google account or email.
+2. Click "**API Keys**" in the top-right menu.
+3. Click "**Create API Key**", give it a name (e.g. `podnote`), and create it.
+4. Copy the key shown on screen (it starts with `gsk_`). **The key is shown only once** — copy it immediately.
+5. In the app's **Settings page**, paste the key into the "Groq API Key" field and save.
+
+> No Groq key? No problem — switch to the "Slow (simple)" mode and you're good to go, no extra setup needed.
+
+---
+
+## Project Structure
 
 ```text
 PodNote/
-  backend/   FastAPI API、轉錄工作、已匯出的 Web 靜態檔（web 版部署到 HF Space）
-  frontend/  Expo / React Native Web 前端原始碼（web 版畫面）
-  desktop/   Electron 桌面應用程式原始碼（Windows，獨立打包、不依賴後端）
+  backend/   FastAPI API, transcription jobs, exported web static files (web edition deployed to HF Space)
+  frontend/  Expo / React Native Web frontend source (web edition UI)
+  desktop/   Electron desktop app source (Windows, packaged standalone, no backend dependency)
 ```
 
-## 版本記錄
+## Changelog
 
-### 網頁版
+### Web
 
-| 版本 | 日期 | 重點 |
+| Version | Date | Highlights |
 |------|------|------|
-| v1.4.0 | 2026-06-09 | 新增使用說明頁；後端支援 OpenAI Whisper 轉錄（與 Groq 二擇一）；修復下載音訊轉錄後未清理導致伺服器磁碟逐集累積 |
-| v1.3.1 | 2026-06-01 | 設定頁顯示目前版本；版本資訊集中管理（`app.json` 為單一來源）；重新匯出部署靜態檔 |
-| v1.3.0 | 2026-06-01 | 轉錄完成後在背景自動以 Gemini 生成摘要；中文固定繁體輸出（OpenCC `s2tw`）；摘要流程移到模組層級更穩定 |
-| v1.2.0 | 2026-06-01 | 修復網頁版桌面佈局白畫面（emoji 取代 vector-icons、Sidebar 改用 `router.push`、卡片 flex 撐滿）；新增 Playwright 測試 |
-| v1.1.0 | 2026-06-01 | 寬螢幕（≥768px）雙欄 Sidebar 佈局；筆記 Markdown 渲染；長節目分段（每段 5 分鐘）轉檔；防濫用與音訊長度上限 |
-| v1.0.0 | 2026-06-01 | 首個正式版：Podcast 連結 → 轉錄 → Gemini 筆記；雙模式轉錄（Groq 快速 / CPU 慢速）；多集併發、筆記歷史；部署於 Hugging Face Spaces |
+| v1.4.0 | 2026-06-09 | Added a user guide page; backend now supports OpenAI Whisper transcription (as an alternative to Groq); fixed downloaded audio not being cleaned up after transcription, which caused server disk usage to grow episode by episode |
+| v1.3.1 | 2026-06-01 | Settings page shows the current version; version info centralized (`app.json` as the single source of truth); re-exported and redeployed static files |
+| v1.3.0 | 2026-06-01 | Auto-generate a summary with Gemini in the background after transcription; Chinese output fixed to Traditional (OpenCC `s2tw`); summary flow moved to module level for stability |
+| v1.2.0 | 2026-06-01 | Fixed blank screen in the web desktop layout (emoji instead of vector-icons, Sidebar switched to `router.push`, cards stretched with flex); added Playwright tests |
+| v1.1.0 | 2026-06-01 | Two-column Sidebar layout for wide screens (≥768px); Markdown rendering for notes; long episodes split into 5-minute segments for transcoding; abuse prevention and audio length limits |
+| v1.0.0 | 2026-06-01 | First stable release: Podcast link → transcript → Gemini notes; dual-mode transcription (Groq fast / CPU slow); concurrent episodes and note history; deployed on Hugging Face Spaces |
 
-### 桌面版
+### Desktop
 
-| 版本 | 日期 | 重點 |
+| Version | Date | Highlights |
 |------|------|------|
-| v1.3.0 | 2026-06-09 | 遠端轉錄改為分段上傳（超過 24MB 的音檔以 ffmpeg 切成 16kHz 單聲道分段），長節目不再因 API 單檔上限而失敗；缺 ffmpeg 時提示安裝並自動重試 |
-| v1.2.0 | 2026-06-09 | 改用 GitHub Actions（windows runner）自動打包發版；web / desktop 以 tag prefix 分流互不干擾；安裝檔名固定為 `PodNote-Setup-<version>.exe` |
-| v0.2.0 | 2026-06-04 | 下載按鈕與網址輸入框同列；逐字稿框縮為 2 行；設定頁標示轉錄 API Key 為必填 |
-| v0.1.1 | 2026-06-04 | 首個獨立 Windows 桌面版：免後端、打包為安裝檔；內建 yt-dlp、首次執行自動取得 ffmpeg；Sidebar 三欄式佈局；Gemini 筆記生成；GitHub 自動更新（electron-updater） |
+| v1.3.0 | 2026-06-09 | Remote transcription now uploads in segments (files over 24MB are split by ffmpeg into 16kHz mono chunks), so long episodes no longer fail on the API's single-file limit; prompts to install ffmpeg and retries automatically if it is missing |
+| v1.2.0 | 2026-06-09 | Switched to GitHub Actions (Windows runner) for automated packaging and releases; web / desktop releases split by tag prefix so they don't interfere; installer name fixed to `PodNote-Setup-<version>.exe` |
+| v0.2.0 | 2026-06-04 | Download button placed on the same row as the URL input; transcript box reduced to 2 lines; Settings page marks the transcription API key as required |
+| v0.1.1 | 2026-06-04 | First standalone Windows desktop release: no backend needed, packaged as an installer; bundled yt-dlp with automatic ffmpeg download on first run; three-column Sidebar layout; Gemini note generation; auto-update via GitHub (electron-updater) |
